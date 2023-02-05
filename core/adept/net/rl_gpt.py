@@ -2,6 +2,7 @@
 
 Mainly,
 * Ability to turn off causal attention
+* Input is not tokenized, but raw feature vector
 * Type annotations and dimensions are more explicit
 
 Original code by Andrej Karpathy (https://github.com/karpathy/nanoGPT)
