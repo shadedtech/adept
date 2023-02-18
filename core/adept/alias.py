@@ -1,6 +1,18 @@
+from __future__ import annotations
+
+from typing import Any
+
 from torch import Tensor, IntTensor
 
-Action = Tensor
-Observation = Tensor
+from adept.util.space import Space
+
+Action = Tensor | tuple[Tensor, ...] | dict[str, Tensor]
+Observation = Tensor | tuple[Tensor, ...] | dict[str, Tensor]
 Reward = Tensor
 Done = IntTensor
+Spec = Space | dict[str, Space] | tuple[Space, ...]
+Shape = tuple[int, ...]
+HiddenState = Tensor
+HiddenStates = dict[str, HiddenState]
+Experience = Tensor
+Info = dict[str, Any]

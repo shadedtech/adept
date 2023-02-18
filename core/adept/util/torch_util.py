@@ -1,5 +1,6 @@
 from torch import nn
 
+
 def get_num_params(model: nn.Module, non_embedding: bool = True):
     """
     Return the number of parameters in the model.
@@ -11,3 +12,10 @@ def get_num_params(model: nn.Module, non_embedding: bool = True):
     if non_embedding:
         n_params -= model.position_encoder.weight.numel()
     return n_params
+
+
+def calc_conv_dim(
+    dim_size: int, kernel_size: int, stride: int, padding: int, dilation: int
+) -> int:
+    numerator = dim_size + 2 * padding - dilation * (kernel_size - 1) - 1
+    return numerator // stride + 1

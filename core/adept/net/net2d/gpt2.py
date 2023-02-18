@@ -2,8 +2,9 @@
 
 Mainly,
 * Ability to turn off causal attention
-* Input is not tokenized, but raw feature vector
+* Input is not tokenized (raw feature vector)
 * Type annotations and dimensions are more explicit
+* Add padding if input sequence is too short
 
 Original code by Andrej Karpathy (https://github.com/karpathy/nanoGPT)
 """
@@ -14,6 +15,10 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torch import Tensor
+
+from adept.alias import HiddenState, Shape
+from adept.config import configurable
+from adept.net.base import NetMod2D
 
 
 # @torch.jit.script good, but don't use with torch.compile
@@ -32,9 +37,11 @@ def new_gelu(x: Tensor) -> Tensor:
     )
 
 
-class RLGPT(nn.Module):
+@configurable
+class GPT2(NetMod2D):
     def __init__(
         self,
+        name: str,
         input_shape: Tuple[int, ...],
         n_head: int = 12,
         n_layer: int = 12,
@@ -43,8 +50,9 @@ class RLGPT(nn.Module):
         bias: bool = True,
         p_dropout: float = 0.2,
         is_causal: bool = False,
+        pad_value: float = 0.0
     ):
-        super().__init__()
+        super().__init__(name, input_shape)
         self.in_proj = nn.Linear(input_shape[-1], n_feature, bias=False)
         self.position_encoder = nn.Embedding(seq_len, n_feature)
         self.blocks = nn.ModuleList(
@@ -53,14 +61,16 @@ class RLGPT(nn.Module):
                 for _ in range(n_layer)
             ]
         )
+
+        self._n_feature = n_feature
+        self._seq_len = seq_len
+        self._pad_value = pad_value
+
         self.apply(self._init_weights)
         # apply special scaled init to the residual projections, per GPT-2 paper
         for pn, p in self.named_parameters():
             if pn.endswith("c_proj.weight"):
                 torch.nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * n_layer))
-        print(
-            "RLGPT initialized with %.2fM parameters" % (self.get_num_params() / 1e6,)
-        )
 
     def _init_weights(self, module: nn.Module):
         if isinstance(module, nn.Linear):
@@ -74,14 +84,24 @@ class RLGPT(nn.Module):
             if module.bias is not None:
                 torch.nn.init.zeros_(module.bias)
 
-    def forward(self, x_bsf: Tensor) -> Tensor:
+    def _forward(self, x_bfs: Tensor, hiddens: HiddenState) -> tuple[Tensor, HiddenState]:
+        b, f, s = x_bfs.shape
+        x_bsf = x_bfs.permute(0, 2, 1)
+        # zero pad if sequence is shorter than seq_len
+        if s < self._seq_len:
+            tmp = torch.empty(b, self._seq_len, f, device=x_bsf.device).fill_(self._pad_value)
+            tmp[:, :s, :] = x_bsf
+            x_bsf = tmp
         x_bsf = self.in_proj(x_bsf)
         x_bsf = x_bsf + self.position_encoder(
             torch.arange(x_bsf.shape[1], device=x_bsf.device)
         )
         for block in self.blocks:
             x_bsf = block(x_bsf)
-        return x_bsf
+        return x_bsf.permute(0, 2, 1), torch.tensor([])
+
+    def _output_shape(self) -> Shape:
+        return self._n_feature, self._seq_len
 
 
 class Block(nn.Module):
