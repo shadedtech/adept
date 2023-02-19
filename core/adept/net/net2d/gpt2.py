@@ -37,8 +37,8 @@ def new_gelu(x: Tensor) -> Tensor:
     )
 
 
-@configurable
 class GPT2(NetMod2D):
+    @configurable
     def __init__(
         self,
         name: str,

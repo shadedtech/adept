@@ -12,6 +12,7 @@ import torch
 from torch import nn, Tensor
 
 from adept.alias import Observation, Spec, Shape, HiddenStates
+from adept.config import configurable
 from adept.module import NetMod
 from adept.util import import_util, torch_util
 from adept.util.space import Space, Discrete, Box
@@ -43,7 +44,8 @@ DEFAULT_AUTO_SPEC = {
 }
 
 
-class StaticNetwork(nn.Module):
+class AutoNetwork(nn.Module):
+    @configurable
     def __init__(
         self,
         observation_shapes: dict[NodeID, Shape],
@@ -94,7 +96,7 @@ class StaticNetwork(nn.Module):
         auto_spec: dict[NodeID, ModuleID] = None,
         nodes: dict[NodeID, ModuleID] = None,
         edges: dict[NodeID, List[NodeID]] = None,
-    ) -> StaticNetwork:
+    ) -> AutoNetwork:
         return cls(
             {
                 obs_id: space.shape
@@ -192,7 +194,10 @@ class StaticNetwork(nn.Module):
                         shapes.append(self._output_shapes[p])
                 # non-feature dims must match
                 in_shape = _merge_shapes(shapes)
-                netmods[node_name] = nm_cls(node_name, in_shape, tag=node_name)
+                if nm_cls.is_configurable:
+                    netmods[node_name] = nm_cls(node_name, in_shape, tag=node_name)
+                else:
+                    netmods[node_name] = nm_cls(node_name, in_shape)
         return netmods
 
     def _get_output_layers(self) -> Dict[str, nn.Module]:
@@ -275,11 +280,19 @@ def _get_output_layer(name: str, input_shape: Shape, output_shape: Shape) -> nn.
 # non feature dims must match (or be broadcastable)
 # must connect observation space and output space
 if __name__ == "__main__":
-    from adept.net.net1d.lstm import LSTM
+    from adept.util import log_util
 
-    net = StaticNetwork(
-        preprocessor,
-        output_space={"prediction": (7,)},
+    log_util.setup_logging(logger)
+
+    observation_shapes = {
+        "screen": (3, 84, 84),
+    }
+    output_shapes = {
+        "action": (1,),
+    }
+    net = AutoNetwork(
+        observation_shapes,
+        output_shapes
     )
     print(net._nodes)
     print(net._edges)
@@ -288,7 +301,7 @@ if __name__ == "__main__":
         print(info)
 
     obs_batch = {"screen": torch.zeros(4, 3, 84, 84)}
-    hidden_states = defaultdict(tuple)
-    hidden_states["body"] = LSTMStates(torch.zeros(4, 512), torch.zeros(4, 512))
+    hidden_states = defaultdict(lambda: torch.tensor([]))
+    hidden_states["body"] = torch.zeros(4, 2, 512)
     stuff = net.forward(obs_batch, hidden_states)
     print(stuff)

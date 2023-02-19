@@ -1,4 +1,5 @@
 import datetime
+import logging
 from os import listdir
 from os import path
 from typing import List
@@ -95,3 +96,17 @@ class RunDir:
 
     def debug_path(self):
         return path.join(self._rundir_path, "debug")
+
+
+def setup_logging(logger: logging.Logger = None):
+    import logging
+    import sys
+
+    formatter = logging.Formatter(fmt="%(levelname)s %(name)s: %(message)s")
+
+    stdout_handler = logging.StreamHandler(stream=sys.stdout)
+    stdout_handler.setFormatter(formatter)
+
+    logger = logging.getLogger("adept") if logger is None else logger
+    logger.addHandler(stdout_handler)
+    logger.setLevel(logging.DEBUG)

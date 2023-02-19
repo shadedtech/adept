@@ -8,8 +8,8 @@ from adept.config import configurable
 from adept.net.base import NetMod1D
 
 
-@configurable
 class LSTM(NetMod1D):
+    @configurable
     def __init__(
         self, name: str, input_shape: Shape, n_hidden: int = 512
     ):

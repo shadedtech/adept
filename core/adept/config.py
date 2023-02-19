@@ -50,6 +50,9 @@ CONFIG_MANAGER = _ConfigManager()
 
 
 def configurable(f: Type[_T]) -> Type[_T]:
+    if inspect.isclass(f):
+        f.is_configurable = True
+        f = f.__init__
     @wraps(f)
     def wrapper(*args, **kwargs):
         params = inspect.signature(f).parameters
@@ -70,7 +73,7 @@ def configurable(f: Type[_T]) -> Type[_T]:
                     conf[name] = param.default
         CONFIG_MANAGER._add_config({tag: conf})
         return f(*args, **kwargs)
-
+    wrapper.is_configurable = True
     return wrapper
 
 

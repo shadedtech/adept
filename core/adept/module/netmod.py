@@ -9,6 +9,8 @@ from adept.alias import Shape
 
 
 class NetMod(nn.Module, metaclass=abc.ABCMeta):
+    is_configurable: bool = False
+
     """Network module.
 
     Similar to torch.nn.Module but provides support for dimension casting,

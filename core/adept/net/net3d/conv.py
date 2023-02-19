@@ -13,8 +13,8 @@ from torch.nn import functional as F
 from adept.util import torch_util
 
 
-@configurable
-class ConvNet(NetMod3D):
+class ImageConvNet(NetMod3D):
+    @configurable
     def __init__(
         self,
         name: str,
@@ -24,10 +24,9 @@ class ConvNet(NetMod3D):
         first_kernel_sz: int = 7,
     ):
         super().__init__(name, input_shape)
-        cfg = self.get_local_cfg()
-        self._n_layer = n_layer or cfg.n_layer
-        self._n_channel = n_channel or cfg.n_channel
-        self._first_kernel_sz = first_kernel_sz or cfg.first_kernel_sz
+        self._n_layer = n_layer
+        self._n_channel = n_channel
+        self._first_kernel_sz = first_kernel_sz
         f, h, w = input_shape
         relu_gain = nn.init.calculate_gain("relu")
         for i in range(self._n_layer):
@@ -66,7 +65,7 @@ class ConvNet(NetMod3D):
 
 
 if __name__ == "__main__":
-    convnet = ConvNet("source3d", (32, 84, 84))
+    convnet = ImageConvNet("source3d", (32, 84, 84))
     print(convnet._n_layer)
     print(convnet._n_channel)
     print(convnet._first_kernel_sz)
