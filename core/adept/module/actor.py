@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import abc
 import typing
-from typing import Tuple
 
 from adept.alias import Spec, Observation, Action, HiddenStates, Reward, Done, Experience
 
 if typing.TYPE_CHECKING:
-    from adept.net import StaticNet
+    from adept.net import AutoNetwork
+    from adept.module import Preprocessor
 
 
 class Actor(abc.ABC):
@@ -22,8 +22,8 @@ class Actor(abc.ABC):
         self,
         obs: Observation,
         hiddens: HiddenStates,
-        net: StaticNet,
-        preprocess_gpu: typing.Callable[[Observation], Observation] = lambda x: x,
+        net: AutoNetwork,
+        preprocessor: Preprocessor,
     ) -> tuple[Action, Experience, HiddenStates]:
         """Decide actions, data for backprop, and the next hidden states.
         """

@@ -14,5 +14,8 @@ Spec = Space | dict[str, Space] | tuple[Space, ...]
 Shape = tuple[int, ...]
 HiddenState = Tensor
 HiddenStates = dict[str, HiddenState]
-Experience = Tensor
+Experience = dict[str, Tensor]
 Info = dict[str, Any]
+Losses = dict[str, Tensor]
+Metrics = dict[str, int | float]
+# TODO Info should be a class
