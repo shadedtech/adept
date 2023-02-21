@@ -16,6 +16,6 @@ class Learner(abc.ABC):
 
     @abc.abstractmethod
     def step(
-        self, net: AutoNetwork, updater: Updater, expbuf: Experience, step_count: int
+        self, net: AutoNetwork, updater: Updater, xp: Experience, step_count: int
     ) -> tuple[Losses, Metrics]:
         ...

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from copy import copy
-from typing import Dict, TypeVar, Iterable
+from typing import Dict, TypeVar
 from typing import Iterator
 from typing import List
 from typing import Tuple
@@ -22,6 +22,8 @@ from adept.net.net3d import OutputLayer3D
 from adept.net.net4d import OutputLayer4D
 
 import logging
+
+from adept.util.spec import to_dict
 
 logger = logging.getLogger(__name__)
 
@@ -216,19 +218,6 @@ class AutoNetwork(nn.Module):
                 in_shape = _merge_shapes(shapes)
                 layers[node_name] = _get_output_layer(node_name, in_shape, out_shape)
         return layers
-
-
-T = TypeVar("T")
-
-
-def to_dict(x: T | Iterable[T] | dict[NodeID, T], name: str = None) -> Dict[NodeID, T]:
-    if isinstance(x, dict):
-        return x
-    elif isinstance(x, Iterable):
-        return {i: v for i, v in enumerate(x)}
-    if not name:
-        raise Exception("Must provide name if x is not a dict or iterable")
-    return {name: x}
 
 
 def get_output_shape(space: Space):

@@ -49,3 +49,13 @@ class Environment(abc.ABC):
     def get_preprocessor(self) -> Preprocessor:
         """Get the GPU preprocessor."""
         ...
+
+    @abc.abstractmethod
+    def batch_size(self) -> int:
+        ...
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __del__(self):
+        self.close()

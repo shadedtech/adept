@@ -9,7 +9,7 @@ from adept.alias import (
     HiddenStates,
     Action,
     Losses,
-    Metrics,
+    Metrics, Shape,
 )
 from adept.config import configurable
 from adept.module import Actor, Learner
@@ -41,6 +41,9 @@ class A2CActor(Actor):
     ) -> Experience:
         pass
 
+    def output_shapes(self) -> dict[str, Shape]:
+        pass
+
 
 class A2CLearner(Learner):
     @configurable
@@ -49,7 +52,7 @@ class A2CLearner(Learner):
         self._discount = discount
 
     def step(
-        self, net: AutoNetwork, updater: Updater, expbuf: Experience, step_count: int
+        self, net: AutoNetwork, updater: Updater, xp: Experience, step_count: int
     ) -> tuple[Losses, Metrics]:
         pass
         # returns = _base.calc_returns(  # Shape: (R, B)

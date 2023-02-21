@@ -10,9 +10,9 @@ class Preprocessor:
     def __call__(self, obs: Observation) -> Observation:
         ...
 
-    @classmethod
+    @property
     @abc.abstractmethod
-    def spec(cls, in_spec: Spec) -> Spec:
+    def observation_spec(self) -> Spec:
         ...
 
     @abc.abstractmethod

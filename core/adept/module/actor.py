@@ -3,7 +3,7 @@ from __future__ import annotations
 import abc
 import typing
 
-from adept.alias import Spec, Observation, Action, HiddenStates, Reward, Done, Experience
+from adept.alias import Spec, Observation, Action, HiddenStates, Reward, Done, Experience, Shape
 
 if typing.TYPE_CHECKING:
     from adept.net import AutoNetwork
@@ -23,10 +23,8 @@ class Actor(abc.ABC):
         obs: Observation,
         hiddens: HiddenStates,
         net: AutoNetwork,
-        preprocessor: Preprocessor,
     ) -> tuple[Action, Experience, HiddenStates]:
-        """Decide actions, data for backprop, and the next hidden states.
-        """
+        """Decide actions, data for backprop, and the next hidden states."""
         ...
 
     @abc.abstractmethod
@@ -39,4 +37,9 @@ class Actor(abc.ABC):
         """Observe the next state transition and return any necessary info to be
         saved in the experience buffer.
         """
+        ...
+
+    @abc.abstractmethod
+    def output_shapes(self) -> dict[str, Shape]:
+        """Shapes for network outputs"""
         ...
