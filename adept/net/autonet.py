@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from copy import copy
-from typing import Dict, TypeVar
+from typing import Dict
 from typing import Iterator
 from typing import List
 from typing import Tuple

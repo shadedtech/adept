@@ -1,8 +1,4 @@
-from typing import Optional
-from typing import Tuple
-
 import torch
-from adept import util
 from adept.alias import HiddenState
 from adept.alias import Shape
 from adept.config import configurable

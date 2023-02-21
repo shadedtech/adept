@@ -6,7 +6,7 @@ from setuptools import setup
 
 ROOT_DIR = os.path.dirname(__file__)
 
-with open(os.path.join(ROOT_DIR, "../README.md"), "r") as fh:
+with open(os.path.join(ROOT_DIR, "README.md"), "r") as fh:
     long_description = fh.read()
 
 extras = {}
