@@ -9,7 +9,7 @@ Mainly,
 Original code by Andrej Karpathy (https://github.com/karpathy/nanoGPT)
 """
 import math
-from typing import Tuple
+from typing import Tuple, Optional
 
 import torch
 from torch import nn
@@ -84,7 +84,7 @@ class GPT2(NetMod2D):
             if module.bias is not None:
                 torch.nn.init.zeros_(module.bias)
 
-    def _forward(self, x_bfs: Tensor, hiddens: HiddenState) -> tuple[Tensor, HiddenState]:
+    def _forward(self, x_bfs: Tensor, hiddens: HiddenState) -> tuple[Tensor, Optional[HiddenState]]:
         b, f, s = x_bfs.shape
         x_bsf = x_bfs.permute(0, 2, 1)
         # zero pad if sequence is shorter than seq_len
@@ -98,7 +98,7 @@ class GPT2(NetMod2D):
         )
         for block in self.blocks:
             x_bsf = block(x_bsf)
-        return x_bsf.permute(0, 2, 1), torch.tensor([])
+        return x_bsf.permute(0, 2, 1), None
 
     def _output_shape(self) -> Shape:
         return self._n_feature, self._seq_len

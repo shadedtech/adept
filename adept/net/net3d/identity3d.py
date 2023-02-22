@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 
 from adept.alias import HiddenState
@@ -11,5 +13,5 @@ class Identity3D(NetMod3D):
 
     def _forward(
         self, x: torch.Tensor, hiddens: HiddenState
-    ) -> tuple[torch.Tensor, HiddenState]:
-        return x, torch.tensor([])
+    ) -> tuple[torch.Tensor, Optional[HiddenState]]:
+        return x, None

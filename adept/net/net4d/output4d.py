@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 from torch import nn
 
@@ -14,9 +16,9 @@ class OutputLayer4D(NetMod4D):
         self.conv_out = nn.Conv3d(f_in, f_out, kernel_size=1)
 
     def _forward(
-        self, x: torch.Tensor, hiddens: HiddenState
-    ) -> tuple[torch.Tensor, HiddenState]:
-        return self.conv_out(x), torch.tensor([])
+        self, x: torch.Tensor, hiddens: HiddenState = None
+    ) -> tuple[torch.Tensor, Optional[HiddenState]]:
+        return self.conv_out(x), None
 
     def _output_shape(self) -> Shape:
         return self._out_shp

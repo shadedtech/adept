@@ -32,7 +32,6 @@ class A2CActor(Actor):
         obs: Observation,
         hiddens: HiddenStates,
         net: AutoNetwork,
-        preprocessor: Preprocessor,
     ) -> tuple[Action, Experience, HiddenStates]:
         pass
 

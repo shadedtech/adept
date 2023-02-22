@@ -18,3 +18,8 @@ class Preprocessor:
     @abc.abstractmethod
     def to(self, device: torch.device):
         ...
+
+    @property
+    @abc.abstractmethod
+    def batch_size(self) -> int:
+        ...

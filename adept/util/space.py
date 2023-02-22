@@ -19,9 +19,9 @@ class Space(abc.ABC):
 class Box(Space):
     def __init__(
         self,
+        shape: tuple[int, ...],
         lows: Tensor,
         highs: Tensor,
-        shape: tuple[int, ...],
         dtype: torch.dtype,
     ):
         super().__init__(shape, dtype)
@@ -35,19 +35,48 @@ class Box(Space):
             + self.low
         )
 
+    def zeros(self) -> Tensor:
+        return torch.zeros(self.shape, dtype=self.dtype)
+
 
 class Discrete(Space):
     def __init__(
         self,
-        n: int,
-        shape: tuple[int, ...],
-        dtype: torch.dtype,
+        n_category: int,
+        shape: tuple[int, ...] = (1, ),
+        dtype: torch.dtype = torch.long,
     ):
         super().__init__(shape, dtype)
-        self.n = n
+        self.n = n_category
 
     def sample(self) -> Tensor:
         return torch.randint(self.n, self.shape, dtype=self.dtype)
+
+    def zeros(self) -> Tensor:
+        return torch.zeros(self.shape, dtype=self.dtype)
+
+
+class MultiDiscrete(Space):
+    def __init__(
+        self,
+        n_category: tuple[int, ...],
+        shape: tuple[int, ...] = (1, ),
+        dtype: torch.dtype = torch.long,
+    ):
+        super().__init__((*shape, len(n_category)), dtype)
+        self.n_category = n_category
+
+    def sample(self) -> Tensor:
+        return torch.stack(
+            [
+                torch.randint(n, self.shape[:-1], dtype=self.dtype)
+                for n in self.n_category
+            ],
+            dim=-1,
+        )
+
+    def zeros(self) -> Tensor:
+        return torch.zeros(self.shape, dtype=self.dtype)
 
 
 if __name__ == "__main__":

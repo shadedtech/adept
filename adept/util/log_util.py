@@ -2,11 +2,13 @@ import datetime
 import logging
 from os import listdir
 from os import path
-from typing import List
+from typing import List, Dict, Iterator
 from typing import Optional
 
+import torch
 from omegaconf import DictConfig
 from omegaconf import OmegaConf
+from torch.utils.tensorboard import SummaryWriter
 
 
 def get_rundir(
@@ -96,6 +98,28 @@ class RunDir:
 
     def debug_path(self):
         return path.join(self._rundir_path, "debug")
+
+
+def write_summaries(
+    writer: SummaryWriter,
+    step_count: int,
+    losses: dict[str, float],
+    metrics: dict[str, float],
+    params: Iterator[tuple[str, torch.Tensor]],
+) -> None:
+    writer.add_scalar("loss/total_loss", sum(losses.values()), step_count)
+    for name, loss in losses.items():
+        writer.add_scalar(f"loss/{name}", loss, step_count)
+    for name, metric in metrics.items():
+        writer.add_scalar(f"metric/{name}", metric, step_count)
+    for name, param in params:
+        name = name.replace(".", "/")
+        writer.add_scalar(name, torch.abs(param).mean(), step_count)
+        if param.grad is not None:
+            writer.add_scalar(
+                f"{name}.grad", torch.abs(param.grad).mean(), step_count
+            )
+
 
 
 def setup_logging(logger: logging.Logger = None):

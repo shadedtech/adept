@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 import torch
 from torch import nn
 
@@ -22,7 +24,7 @@ class LSTM(NetMod1D):
 
     def _forward(
         self, x: torch.Tensor, hiddens: HiddenState
-    ) -> tuple[torch.Tensor, HiddenState]:
+    ) -> tuple[torch.Tensor, Optional[HiddenState]]:
         h_state, cell_state = self.lstm_cell(x, torch.unbind(hiddens, dim=1))
         return h_state, torch.stack([h_state, cell_state], dim=1)
 
@@ -31,7 +33,7 @@ class LSTM(NetMod1D):
 
     def new_hidden_states(
         self, device: torch.device, batch_sz: int = 1
-    ) -> HiddenState:
+    ) -> Optional[HiddenState]:
         return torch.zeros(batch_sz, 2, self._n_hidden, device=device)
 
 

@@ -24,6 +24,20 @@ class Environment(abc.ABC):
         """Action specification of the environment."""
         ...
 
+    @property
+    @abc.abstractmethod
+    def batch_size(self) -> int:
+        ...
+
+    @property
+    @abc.abstractmethod
+    def n_reward_component(self) -> int:
+        """Number of reward components.
+
+        Specify reward components for eval / tensorboard logging.
+        """
+        ...
+
     @abc.abstractmethod
     def step(self, action: Action) -> tuple[Observation, Reward, Done, Info]:
         ...
@@ -38,20 +52,8 @@ class Environment(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def n_reward_component(self) -> int:
-        """Number of reward components.
-
-        Specify reward components for eval / tensorboard logging.
-        """
-        ...
-
-    @abc.abstractmethod
     def get_preprocessor(self) -> Preprocessor:
         """Get the GPU preprocessor."""
-        ...
-
-    @abc.abstractmethod
-    def batch_size(self) -> int:
         ...
 
     def __exit__(self, exc_type, exc_val, exc_tb):

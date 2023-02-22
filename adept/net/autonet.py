@@ -146,7 +146,9 @@ class AutoNetwork(nn.Module):
         out = {}
         for node_name, mod in self._modules.items():
             if isinstance(mod, NetMod):
-                out[node_name] = mod.new_hidden_states(device, batch_sz)
+                hiddens = mod.new_hidden_states(device, batch_sz)
+                if hiddens is not None:
+                    out[node_name] = hiddens
         return out
 
     def netmod_shapes(self) -> Iterator[Tuple[str, Shape, Shape]]:

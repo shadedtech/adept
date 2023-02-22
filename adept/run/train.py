@@ -1,5 +1,7 @@
 import logging
 import os
+import time
+from collections import deque
 
 import numpy as np
 import torch
@@ -57,6 +59,8 @@ def main(
             logdir,
             experiment_tag,
             resume_path,
+            n_step,
+            checkpoint_interval,
         )
 
 
@@ -86,10 +90,12 @@ def run(
     tb_writer = SummaryWriter(rundir_path)
     step_count = _base.get_step_count(rundir_path, resume_path)
     next_save = _base.get_next_save(checkpoint_interval, step_count)
-    ep_rewards = torch.zeros(env.batch_size())
-    hidden_states = network.new_hidden_states(device, env.batch_size())
+    ep_rewards = torch.zeros(preprocessor.batch_size)
+    hidden_states = network.new_hidden_states(device, preprocessor.batch_size)
     obs = preprocessor(env.reset())
+    delta_times = deque(maxlen=100)
     while step_count < n_step:
+        start_time = time.perf_counter()
         actions, actor_xp, hidden_states = actor.step(
             obs,
             hidden_states,
@@ -99,17 +105,38 @@ def run(
         nxt_obs = preprocessor(nxt_obs)
         env_xp = actor.observe(nxt_obs, rewards.to(device), dones.to(device))
         ready = expbuf.step(actor_xp, env_xp)
-        step_count += env.batch_size()
+        step_count += preprocessor.batch_size
         ep_rewards += rewards.sum(dim=-1)
         obs = nxt_obs
         for batch_ix, done in enumerate(dones):
             if done:
                 tb_writer.add_scalar("reward", ep_rewards[batch_ix], step_count)
                 ep_rewards[batch_ix].zero_()
-                # TODO reset hidden states
+                hidden_states = _base.reset_hidden_states(
+                    batch_ix, hidden_states, network.new_hidden_states(device)
+                )
+                logger.info(
+                    f"STEP: {step_count} "
+                    f"REWARD: {ep_rewards[batch_ix]} "
+                    f"SPS: {_base.get_steps_per_second(delta_times, preprocessor.batch_size)}"
+                )
         if ready:
-            # TODO backwards pass and housekeeping
-            losses, metrics = learner.step(network, updater, expbuf.to_dict(), step_count)
+            losses, metrics = learner.step(
+                network, updater, expbuf.to_dict(), step_count
+            )
+            expbuf.reset()
+            for t in hidden_states.values():
+                t.detach_()
+            log_util.write_summaries(
+                tb_writer, step_count, losses, metrics, network.named_parameters()
+            )
+        if step_count >= next_save:
+            writer.save_network(network, step_count)
+            writer.save_optimizer(optimizer, step_count)
+            next_save += checkpoint_interval
+        delta_times.append(time.perf_counter() - start_time)
+    env.close()
+
 
 if __name__ == "__main__":
     from adept.util import log_util, spec, CheckpointWriter

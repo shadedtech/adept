@@ -7,6 +7,8 @@ from adept.alias import Shape
 from adept.config import configurable
 from adept.net.base import NetMod1D
 
+from typing import Optional
+
 
 class LinearNet(NetMod1D):
     @configurable
@@ -30,12 +32,12 @@ class LinearNet(NetMod1D):
 
     def _forward(
         self, x: torch.Tensor, hiddens: HiddenState = None
-    ) -> tuple[torch.Tensor, HiddenState]:
+    ) -> tuple[torch.Tensor, Optional[HiddenState]]:
         for i in range(self._n_layer):
             linear = self._modules[f"linear{i}"]
             norm = self._modules[f"norm{i}"]
             x = F.relu(norm(linear(x)))
-        return x, torch.tensor([])
+        return x, None
 
     def _output_shape(self) -> Shape:
         return (self._n_hidden,)

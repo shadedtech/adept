@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 
 import torch
 from adept.alias import HiddenStates, HiddenState
@@ -15,8 +15,8 @@ class OutputLayer1D(NetMod1D):
 
     def _forward(
         self, x: torch.Tensor, hiddens: HiddenStates = None
-    ) -> tuple[torch.Tensor, HiddenState]:
-        return self.linear_out(x), torch.tensor([])
+    ) -> tuple[torch.Tensor, Optional[HiddenState]]:
+        return self.linear_out(x), None
 
     def _output_shape(self) -> Shape:
         return self._out_shp

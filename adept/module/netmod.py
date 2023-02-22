@@ -29,7 +29,7 @@ class NetMod(nn.Module, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def _forward(
         self, x: torch.Tensor, hiddens: HiddenState
-    ) -> tuple[torch.Tensor, HiddenState]:
+    ) -> tuple[torch.Tensor, Optional[HiddenState]]:
         """Perform a forward pass.
 
         If the module doesn't use hidden states, return an empty tensor.
@@ -64,12 +64,12 @@ class NetMod(nn.Module, metaclass=abc.ABCMeta):
 
     def new_hidden_states(
         self, device: torch.device, batch_sz: int = 1
-    ) -> HiddenState:
+    ) -> Optional[HiddenState]:
         """Initialize hidden states.
 
         Override this method if your module uses hidden states.
         """
-        return torch.tensor([])
+        return None
 
     def forward(
         self, x: torch.Tensor, hiddens: HiddenState = None, dim: Optional[int] = None

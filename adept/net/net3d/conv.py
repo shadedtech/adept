@@ -1,11 +1,13 @@
+from typing import Optional
+
 import torch
+from torch import nn
+from torch.nn import functional as F
+
 from adept.alias import HiddenState
 from adept.alias import Shape
 from adept.config import configurable
 from adept.net.base import NetMod3D
-from torch import nn
-from torch.nn import functional as F
-
 from adept.util import torch_util
 
 
@@ -39,13 +41,13 @@ class ImageConvNet(NetMod3D):
         self._output_shape_cache = None
 
     def _forward(
-        self, x: torch.Tensor, hiddens: HiddenState
-    ) -> tuple[torch.Tensor, HiddenState]:
+        self, x: torch.Tensor, hiddens: HiddenState = None
+    ) -> tuple[torch.Tensor, Optional[HiddenState]]:
         for i in range(self._n_layer):
             conv = self._modules[f"conv{i}"]
             norm = self._modules[f"norm{i}"]
             x = F.relu(norm(conv(x)))
-        return x, torch.tensor([])
+        return x, None
 
     def _output_shape(self) -> Shape:
         if self._output_shape_cache is None:

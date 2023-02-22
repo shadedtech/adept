@@ -16,6 +16,6 @@ HiddenState = Tensor
 HiddenStates = dict[str, HiddenState]
 Experience = dict[str, Tensor | list[Tensor] | dict[str, Tensor]]
 Info = dict[str, Any]
-Losses = dict[str, Tensor]
+Losses = dict[str, float]
 Metrics = dict[str, int | float]
 # TODO Info should be a class

@@ -12,6 +12,7 @@ import torch
 from torch import nn, optim
 from typing import Optional
 
+from adept.alias import HiddenStates
 from adept.config import configurable
 from adept.util import log_util
 from adept.util.log_util import RunDir
@@ -110,6 +111,13 @@ def get_steps_per_second(dts: deque, batch_sz: int) -> str:
         if len(dts) == dts.maxlen
         else "Calculating..."
     )
+
+
+def reset_hidden_states(batch_ix: int, hidden_states: HiddenStates, new_hidden_states: HiddenStates):
+    for k in hidden_states.keys():
+        # TODO may need to clone this
+        hidden_states[k][batch_ix] = new_hidden_states[k][0]
+    return hidden_states
 
 
 class Updater(abc.ABC):
