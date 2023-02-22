@@ -133,11 +133,13 @@ class AutoNetwork(nn.Module):
                     else:
                         raise Exception("Unreachable")
                 x = torch.cat(inputs, dim=1)
+                hstate = None if cur not in hidden_states else hidden_states[cur]
                 cache[cur], nxt_hid[cur] = self._modules[cur].forward(
-                    x, hidden_states[cur]
+                    x, hstate
                 )
                 for p in marked_for_delete:
                     del cache[p]
+        nxt_hid = {k: v for k, v in nxt_hid.items() if v is not None}
         return cache, nxt_hid
 
     def new_hidden_states(

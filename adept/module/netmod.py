@@ -76,8 +76,6 @@ class NetMod(nn.Module, metaclass=abc.ABCMeta):
     ):
         if dim is None:
             dim = len(self._output_shape())
-        if hiddens is None:
-            hiddens = torch.tensor([])
         out, nxt_hiddens = self._forward(x, hiddens)
         if dim == 1:
             out = self._to_1d(out)
