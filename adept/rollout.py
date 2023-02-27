@@ -15,7 +15,8 @@ if typing.TYPE_CHECKING:
 
 class Rollout(ExpBuf):
     def __init__(self, rollout_len: int = 20):
-        self._rollout_len = rollout_len
+        # Add an extra entry for bootstrapping
+        self._rollout_len = rollout_len + 1
         self._buffer: dict[
             str, Tensor | typing.Iterable[Tensor] | dict[str, Tensor]
         ] = {}
@@ -33,8 +34,10 @@ class Rollout(ExpBuf):
 
     def reset(self) -> bool:
         for tensor in self._iter_buffer():
-            tensor.detach_()
-        self._cur_ix = 0
+            # Shift the bootstrap to the front
+            tensor[0] = tensor[-1]
+            tensor[1:] = tensor[1:].detach()
+        self._cur_ix = 1
         return self.ready()
 
     def to_dict(self) -> Experience:
