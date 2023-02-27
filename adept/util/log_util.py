@@ -61,7 +61,17 @@ class RunDir:
 
     def latest_network_path(self) -> str:
         epoch_path = self.latest_epoch_path()
-        net_file = [f for f in listdir(epoch_path) if ("model" in f)][0]
+        net_file = [f for f in listdir(epoch_path) if ("net" in f)][0]
+        return path.join(epoch_path, net_file)
+
+    def latest_actor_path(self) -> str:
+        epoch_path = self.latest_epoch_path()
+        net_file = [f for f in listdir(epoch_path) if ("actor" in f)][0]
+        return path.join(epoch_path, net_file)
+
+    def latest_preprocessor_path(self) -> str:
+        epoch_path = self.latest_epoch_path()
+        net_file = [f for f in listdir(epoch_path) if ("preprocessor" in f)][0]
         return path.join(epoch_path, net_file)
 
     def latest_optimizer_path(self) -> str:
@@ -74,7 +84,17 @@ class RunDir:
 
     def network_path(self, epoch: int) -> str:
         epoch_path = self.epoch_path(epoch)
-        net_file = [f for f in listdir(epoch_path) if ("model" in f)][0]
+        net_file = [f for f in listdir(epoch_path) if ("net" in f)][0]
+        return path.join(epoch_path, net_file)
+
+    def actor_path(self, epoch: int) -> str:
+        epoch_path = self.epoch_path(epoch)
+        net_file = [f for f in listdir(epoch_path) if ("actor" in f)][0]
+        return path.join(epoch_path, net_file)
+
+    def preprocessor_path(self, epoch: int) -> str:
+        epoch_path = self.epoch_path(epoch)
+        net_file = [f for f in listdir(epoch_path) if ("preprocessor" in f)][0]
         return path.join(epoch_path, net_file)
 
     def optimizer_path(self, epoch: int) -> str:

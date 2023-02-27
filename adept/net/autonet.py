@@ -14,7 +14,7 @@ from torch import nn, Tensor
 from adept.alias import Observation, Spec, Shape, HiddenStates
 from adept.config import configurable
 from adept.module import NetMod
-from adept.util import import_util, torch_util
+from adept.util import import_util, torch_util, spec
 from adept.util.space import Space, Discrete, Box
 from adept.net.net1d import OutputLayer1D
 from adept.net.net2d import OutputLayer2D
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 # TODO Handle hidden states
 
-NodeID = str | int
+NodeID = str
 ModuleID = str
 
 
@@ -50,8 +50,8 @@ class AutoNetwork(nn.Module):
     @configurable
     def __init__(
         self,
-        observation_shapes: dict[NodeID, Shape],
-        output_shapes: dict[NodeID, Shape],
+        observation_spec: Spec,
+        output_spec: Spec,
         auto_spec: dict[NodeID, ModuleID] = None,
         nodes: dict[NodeID, ModuleID] = None,
         edges: dict[NodeID, List[NodeID]] = None,
@@ -59,8 +59,8 @@ class AutoNetwork(nn.Module):
         super().__init__()
         if auto_spec is None:
             auto_spec = DEFAULT_AUTO_SPEC
-        self._observation_shapes = observation_shapes
-        self._output_shapes = output_shapes
+        self._observation_spec = spec.to_dict(observation_spec, "obs")
+        self._output_spec = spec.to_dict(output_spec, "action")
         self._auto_spec = auto_spec
         self._nodes = nodes
         self._edges = edges
@@ -84,45 +84,26 @@ class AutoNetwork(nn.Module):
         }
         for node_name, netmod in self._get_netmods().items():
             self.add_module(node_name, netmod)
+
         for node_name, layer in self._get_output_layers().items():
             self.add_module(node_name, layer)
         logger.info(
             "Network initialized with %.2fM parameters" % (torch_util.get_num_params(self) / 1e6)
         )
 
-    @classmethod
-    def from_specs(
-        cls,
-        observation_spec: Spec,
-        output_spec: Spec,
-        auto_spec: dict[NodeID, ModuleID] = None,
-        nodes: dict[NodeID, ModuleID] = None,
-        edges: dict[NodeID, List[NodeID]] = None,
-    ) -> AutoNetwork:
-        return cls(
-            {
-                obs_id: space.shape
-                for obs_id, space in to_dict(observation_spec, name="obs")
-            },
-            {out_id: get_output_shape(space) for out_id, space in to_dict(output_spec, name="out")},
-            auto_spec,
-            nodes,
-            edges,
-        )
-
     def forward(
         self, obs: Observation, hidden_states: HiddenStates, **kwargs
     ) -> Tuple[dict[NodeID, Tensor], HiddenStates]:
-        obs = to_dict(obs, name="obs")
+        obs = spec.to_dict(obs, name="obs")
         cache = {}
         counts = copy(self._successor_counts)
         nxt_hid = {}
         for cur in self._node_order:
-            if cur in self._nodes or cur in self._output_shapes:
+            if cur in self._nodes or cur in self._output_spec:
                 inputs = []
                 marked_for_delete = []
                 for p in self._predecessors[cur]:
-                    if p in self._observation_shapes:
+                    if p in self._observation_spec:
                         inputs.append(obs[p])
                     elif p in cache:
                         shape = self._modules[p].output_shape(self._modules[cur].dim())
@@ -161,24 +142,25 @@ class AutoNetwork(nn.Module):
     def _from_auto(
         self, auto_spec: dict[NodeID, ModuleID]
     ) -> Tuple[dict[NodeID, ModuleID], dict[NodeID, List[NodeID]]]:
-        input_dims = [len(shape) for shape in self._observation_shapes.values()]
-        output_dims = [len(shape) for shape in self._output_shapes.values()]
+        input_dims = [len(space._non_batch_shape) for space in self._observation_spec.values()]
+        output_dims = [len(space._non_batch_shape) for space in self._output_spec.values()]
         if len(input_dims) != len(set(input_dims)):
             raise Exception("Not implemented")  # TODO
         nodes = {}  # node_name to module mapping
         edges = defaultdict(list)  # graph data structure
-        for input_node, shape in self._observation_shapes.items():
+        for input_node, shape in self._observation_spec.items():
             dim = len(shape)
             source_node = f"source{dim}d"
             edges[input_node].append(source_node)
             nodes[source_node] = auto_spec[source_node]
             edges[source_node].append("body")
         nodes["body"] = auto_spec["body"]
+        # TODO kill from here down
         for dim in output_dims:
             head_node = f"head{dim}d"
             nodes[head_node] = auto_spec[head_node]
             edges["body"].append(head_node)
-        for output_node, shape in self._output_shapes.items():
+        for output_node, shape in self._output_spec.items():
             dim = len(shape)
             head_node = f"head{dim}d"
             edges[head_node].append(output_node)
@@ -191,13 +173,13 @@ class AutoNetwork(nn.Module):
                 nm_cls = import_util.import_object(self._nodes[node_name])
                 shapes = []
                 for p in self._predecessors[node_name]:
-                    if p in self._observation_shapes:
+                    if p in self._observation_spec:
                         # TODO method to cast dimension
-                        shapes.append(self._observation_shapes[p])
+                        shapes.append(self._observation_spec[p])
                     elif p in netmods:
-                        shapes.append(netmods[p].output_shape(nm_cls.dim()))
-                    elif p in self._output_shapes:
-                        shapes.append(self._output_shapes[p])
+                        shapes.append(netmods[p].logit_shape(nm_cls.dim()))
+                    elif p in self._output_spec:
+                        shapes.append(self._output_spec[p])
                 # non-feature dims must match
                 in_shape = _merge_shapes(shapes)
                 if nm_cls.is_configurable:
@@ -208,29 +190,20 @@ class AutoNetwork(nn.Module):
 
     def _get_output_layers(self) -> Dict[str, nn.Module]:
         layers = {}
-        for node_name, out_shape in self._output_shapes.items():
+        for node_name, out_shape in self._output_spec.items():
             for p in self._predecessors[node_name]:
                 shapes = []
-                if p in self._observation_shapes:
+                if p in self._observation_spec:
                     # TODO method to cast dimension
-                    shapes.append(self._observation_shapes[p])
+                    shapes.append(self._observation_spec[p])
                 elif p in self._modules:
                     shapes.append(self._modules[p].output_shape(len(out_shape)))
-                elif p in self._output_shapes:
+                elif p in self._output_spec:
                     # TODO method to cast dimension
-                    shapes.append(self._output_shapes[p])
+                    shapes.append(self._output_spec[p])
                 in_shape = _merge_shapes(shapes)
                 layers[node_name] = _get_output_layer(node_name, in_shape, out_shape)
         return layers
-
-
-def get_output_shape(space: Space):
-    if isinstance(space, Box):
-        return space.shape
-    elif isinstance(space, Discrete):
-        return space.shape + (space.n,)
-    else:
-        raise Exception("Space not recognized:", space)
 
 
 def _merge_shapes(shapes: List[Shape]) -> Shape:
@@ -294,7 +267,7 @@ if __name__ == "__main__":
         print(info)
 
     obs_batch = {"screen": torch.zeros(4, 3, 84, 84)}
-    hidden_states = defaultdict(lambda: torch.tensor([]))
+    hidden_states = defaultdict(lambda: torch.tensor([]))  # TODO should this be none?
     hidden_states["body"] = torch.zeros(4, 2, 512)
     stuff = net.forward(obs_batch, hidden_states)
     print(stuff)

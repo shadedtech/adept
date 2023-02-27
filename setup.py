@@ -11,6 +11,9 @@ with open(os.path.join(ROOT_DIR, "README.md"), "r") as fh:
 
 extras = {}
 test_deps = ["pytest"]
+atari_deps = ["gymnasium[atari, accept-rom-license]"]
+extras["test"] = test_deps
+extras["atari"] = atari_deps
 
 all_deps = []
 for group_name in extras:
@@ -29,15 +32,16 @@ def find_version(*filepath: str):
             return version_match.group(1)
         raise RuntimeError("Unable to find version string.")
 
+
 setup(
-    name='adept',
-    version='0,0.0dev0',
+    name="adept",
+    version="0.0.0dev0",
     packages=find_packages(),
-    url='github.com/shadedtech/adept',
-    license='MIT',
-    author='ShadedTech',
-    author_email='',
-    description='',
+    url="github.com/shadedtech/adept",
+    license="MIT",
+    author="ShadedTech",
+    author_email="",
+    description="",
     install_requires=[],
     test_requires=test_deps,
     extras_require=extras,

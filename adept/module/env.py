@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 
 import typing
@@ -22,11 +24,6 @@ class Environment(abc.ABC):
     @abc.abstractmethod
     def action_spec(self) -> Spec:
         """Action specification of the environment."""
-        ...
-
-    @property
-    @abc.abstractmethod
-    def batch_size(self) -> int:
         ...
 
     @property

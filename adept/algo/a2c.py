@@ -16,6 +16,8 @@ from adept.module import Actor, Learner
 from adept.run._base import Updater
 
 from adept.algo import _base
+from adept.util import spec
+from adept.util.spec import to_dict
 
 if typing.TYPE_CHECKING:
     from adept.net import AutoNetwork
@@ -38,9 +40,6 @@ class A2CActor(Actor):
     def observe(
         self, next_obs: Observation, rewards: Reward, dones: Done
     ) -> Experience:
-        pass
-
-    def output_shapes(self) -> dict[str, Shape]:
         pass
 
 

@@ -34,18 +34,21 @@ def main(
     checkpoint_interval: int = 1_000_000,
 ):
     _base.check_omp_num_threads()
-    with util.import_object(env)() as env:
-        actor = util.import_object(actor)(env.action_spec)
-        learner = util.import_object(learner)()
-        expbuf = util.import_object(expbuf)()
-        print(CONFIG_MANAGER.to_yaml())
-        device = _base.get_device(gpu_id)
-        preprocessor = env.get_preprocessor().to(device)
-        net = AutoNetwork(
-            spec.input_shapes(preprocessor.observation_spec), actor.output_shapes()
-        ).to(device)
-        net = _base.init_network(net, is_train=True, rundir=resume_path)
-        optimizer = util.import_object(optimizer)(net.parameters())
+    device = _base.get_device(gpu_id)
+    env = util.import_object(env)()
+    actor = util.import_object(actor)(env.action_spec).to(device)
+    learner = util.import_object(learner)()
+    expbuf = util.import_object(expbuf)()
+    print(CONFIG_MANAGER.to_yaml())
+    preprocessor = env.get_preprocessor().to(device)
+    net = AutoNetwork(
+        preprocessor.observation_spec,
+        actor.output_spec,
+    ).to(device)
+    net = _base.init_network(net, is_train=True, rundir=resume_path)
+    optimizer = util.import_object(optimizer)(net.parameters())
+    # TODO init optimizer, actor, preprocessor from resume
+    try:
         run(
             device,
             env,
@@ -62,6 +65,8 @@ def main(
             n_step,
             checkpoint_interval,
         )
+    finally:
+        env.close()
 
 
 def run(
@@ -86,7 +91,7 @@ def run(
     os.makedirs(rundir_path, exist_ok=True)
     logger.info(f"Logging to {rundir_path}")
     updater = _base.BasicUpdater(network, optimizer)
-    writer = CheckpointWriter(rundir_path)
+    writer = util.CheckpointWriter(rundir_path)
     tb_writer = SummaryWriter(rundir_path)
     step_count = _base.get_step_count(rundir_path, resume_path)
     next_save = _base.get_next_save(checkpoint_interval, step_count)
@@ -133,13 +138,14 @@ def run(
         if step_count >= next_save:
             writer.save_network(network, step_count)
             writer.save_optimizer(optimizer, step_count)
+            writer.save_actor(actor, step_count)
+            writer.save_preprocessor(preprocessor, step_count)
             next_save += checkpoint_interval
         delta_times.append(time.perf_counter() - start_time)
-    env.close()
 
 
 if __name__ == "__main__":
-    from adept.util import log_util, spec, CheckpointWriter
+    from adept.util import log_util
 
     log_util.setup_logging()
     main()

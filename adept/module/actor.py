@@ -3,14 +3,15 @@ from __future__ import annotations
 import abc
 import typing
 
-from adept.alias import Spec, Observation, Action, HiddenStates, Reward, Done, Experience, Shape
+from torch import nn
+
+from adept.alias import Spec, Observation, Action, HiddenStates, Reward, Done, Experience
 
 if typing.TYPE_CHECKING:
     from adept.net import AutoNetwork
-    from adept.module import Preprocessor
 
 
-class Actor(abc.ABC):
+class Actor(abc.ABC, nn.Module):
     """Forward pass logic."""
 
     def __init__(self, action_spec: Spec):
@@ -39,7 +40,8 @@ class Actor(abc.ABC):
         """
         ...
 
+    @property
     @abc.abstractmethod
-    def output_shapes(self) -> dict[str, Shape]:
-        """Shapes for network outputs"""
+    def output_spec(self) -> Spec:
+        """The spec of the output of the actor."""
         ...

@@ -94,7 +94,7 @@ class GPT2(NetMod2D):
             x_bsf = tmp
         x_bsf = self.in_proj(x_bsf)
         x_bsf = x_bsf + self.position_encoder(
-            torch.arange(x_bsf.shape[1], device=x_bsf.device)
+            torch.arange(x_bsf._non_batch_shape[1], device=x_bsf.device)
         )
         for block in self.blocks:
             x_bsf = block(x_bsf)
