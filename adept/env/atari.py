@@ -1,26 +1,25 @@
-import warnings
-
+import gymnasium as gym
 import torch
 from torch import Tensor
 
 from adept.alias import Observation, Action, Reward, Done, Info, Spec
+from adept.env.base.gym_wrappers import (
+    NoopResetEnv,
+    MaxAndSkipEnv,
+    EpisodicLifeEnv,
+    FireResetEnv,
+    ClipRewardEnv,
+    NumpyObsWrapper,
+)
 from adept.module import Environment, Preprocessor
 from adept.util import space
 
-try:
-    import gymnasium as gym
-    from adept.env.base.gym_wrappers import NoopResetEnv, MaxAndSkipEnv, EpisodicLifeEnv, \
-        FireResetEnv, \
-        ClipRewardEnv, NumpyObsWrapper
-except ImportError:
-    warnings.warn("gymnasium not installed, AtariEnv will not work")
-    gym = None
-
 
 class AtariPreprocessor(Preprocessor):
-    def __init__(self, observation_spec: Spec):
+    def __init__(self, observation_spec: Spec, batch_size: int = 1):
         super().__init__()
         self._observation_spec = observation_spec
+        self._batch_size = batch_size
         # self.transforms = torch.nn.Sequential(
         #     transforms.Grayscale(),
         #     transforms.Resize((84, 84), interpolation=2),
@@ -41,7 +40,7 @@ class AtariPreprocessor(Preprocessor):
 
     @property
     def batch_size(self) -> int:
-        return 1
+        return self._batch_size
 
 
 class AtariEnv(Environment):
@@ -92,14 +91,16 @@ class AtariEnv(Environment):
         # New gym API is weird
         done = terminated or truncated
         # Add batch dimension
-        obs = torch.from_numpy(gym_obs).view(1, *gym_obs.shape)
-        reward = torch.tensor(reward).view(1, 1)
-        done = torch.tensor(done).view(1)
+        obs = torch.from_numpy(gym_obs)
+        reward = torch.tensor(reward).view(1)
+        done = torch.tensor(done).int()
+        if done.item():
+            obs = self.reset()
         return obs, reward, done, info
 
     def reset(self) -> Observation:
         gym_obs, _ = self._env.reset()
-        obs = torch.from_numpy(gym_obs).view(1, *gym_obs.shape)
+        obs = torch.from_numpy(gym_obs)
         return obs
 
     def close(self) -> None:
@@ -113,17 +114,15 @@ class AtariEnv(Environment):
             torch_lows = torch.from_numpy(gym_space.low)
             torch_highs = torch.from_numpy(gym_space.high)
             return space.Box(
-                (1,) + gym_space.shape,
+                gym_space.shape,
                 torch_lows,
                 torch_highs,
-                torch.float32,
-                n_batch_dim=1
             )
         elif isinstance(gym_space, gym.spaces.Discrete):
-            return space.Discrete(gym_space.n, batch_size=1)
+            return space.Discrete(gym_space.n)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     env = AtariEnv(0)
     preprocess = env.get_preprocessor()
     print(env.observation_spec.sample())

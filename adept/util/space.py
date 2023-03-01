@@ -41,6 +41,14 @@ class Space(abc.ABC):
     def zeros(self, with_batch: bool = True) -> Tensor:
         return torch.zeros(self.shape(with_batch), dtype=self.dtype)
 
+    def set_batch_size(self, batch_size: int | tuple[int, ...]) -> Space:
+        if type(batch_size) is int:
+            batch_size = (batch_size,)
+
+        self.batch_size = batch_size
+        self.flat_batch_size: int = math.prod(batch_size)
+        return self
+
 
 class Box(Space):
     def __init__(
@@ -48,8 +56,8 @@ class Box(Space):
         shape: tuple[int, ...],
         lows: Tensor,
         highs: Tensor,
-        dtype: torch.dtype,
-        n_batch_dim: int = 1,
+        dtype: torch.dtype = torch.float32,
+        n_batch_dim: int = 0,
     ):
         super().__init__(shape[:n_batch_dim], shape[n_batch_dim:], dtype)
         self.low = lows
@@ -77,7 +85,7 @@ class Discrete(Space):
     def __init__(
         self,
         n_category: int,
-        batch_size: int | tuple[int, ...] = 1,
+        batch_size: int | tuple[int, ...] = tuple(),
         dtype: torch.dtype = torch.long,
     ):
         super().__init__(batch_size, tuple(), dtype)
@@ -97,7 +105,7 @@ class MultiDiscrete(Space):
     def __init__(
         self,
         n_categories: tuple[int, ...],
-        batch_size: int | tuple[int, ...] = 1,
+        batch_size: int | tuple[int, ...] = tuple(),
         dtype: torch.dtype = torch.long,
     ):
         super().__init__(batch_size, (len(n_categories),), dtype)
