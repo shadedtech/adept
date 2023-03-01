@@ -5,11 +5,9 @@ from typing import Tuple
 
 import numpy as np
 import torch
-from sandbox.util.alias import Action, Observation, Reward, Done
-from sandbox.util.preprocess import SandboxPreprocessor
 from torch import multiprocessing as mp, Tensor
 
-from adept.alias import Spec
+from adept.alias import Spec, Observation, Reward, Done, Info
 from adept.config import configurable
 from adept.env.atari import AtariEnv, AtariPreprocessor
 from adept.module import Environment, Preprocessor
@@ -67,13 +65,13 @@ class AtariPool(Environment):
             self._cxns.append(parent_cxn)
             self._procs.append(proc)
 
-    def step(self, actions: Tensor) -> Tuple[Observation, Reward, Done]:
+    def step(self, actions: Tensor) -> Tuple[Observation, Reward, Done, Info]:
         self._action_sm.copy_(actions)
         for env_ix in range(self.n_sim):
             self._cxns[env_ix].send("step")
         for cxn in self._cxns:
             cxn.recv()
-        return self._obs_sm, self._reward_sm, self._done_sm
+        return self._obs_sm, self._reward_sm, self._done_sm, {}
 
     def reset(self) -> Observation:
         for cxn in self._cxns:
@@ -142,6 +140,6 @@ if __name__ == '__main__':
     pool = AtariPool()
     obs = pool.reset()
     for _ in range(100):
-        obs, reward, done = pool.step(pool.action_spec.sample())
+        obs, reward, done, _ = pool.step(pool.action_spec.sample())
         print(reward)
     pool.close()
