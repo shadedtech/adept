@@ -6,6 +6,7 @@ import torch
 from torch import nn, Tensor
 
 from adept import util
+from adept.algo import _base
 from adept.alias import (
     Spec,
     Observation,
@@ -43,10 +44,10 @@ class A2CActor(Actor):
         super().__init__(action_spec)
         self.action_distributions = nn.ModuleDict(_build_distributions(action_spec))
 
-        batch_size = spec.SpecImpl(action_spec, "action").batch_size
+        self.batch_size = spec.SpecImpl(action_spec, "action").batch_size
         self._output_spec = {
             **spec.to_dict(action_spec, "action"),
-            "critic": space.Box((*batch_size, 1), -float("inf"), float("inf")),
+            "critic": space.Box((*self.batch_size, 1), -float("inf"), float("inf")),
         }
         if is_training:
             self.train()
@@ -70,11 +71,11 @@ class A2CActor(Actor):
         for action_key, dist_mod in self.action_distributions.items():
             dist = dist_mod.forward(out[action_key])
             action = dist.sample()
-            log_probs.append(dist.log_prob(action))
-            entropies.append(dist.entropy())
+            log_probs.append(normalize_shape_bf(dist.log_prob(action), self.batch_size))
+            entropies.append(normalize_shape_bf(dist.entropy(), self.batch_size))
             actions[action_key] = action.cpu()
-        log_probs_b = torch.stack(log_probs, dim=-1).sum(-1)
-        entropies_b = torch.cat(entropies, dim=-1)
+        log_probs_b = torch.cat(log_probs, dim=-1).sum(-1)
+        entropies_b = torch.cat(entropies, dim=-1).sum(-1)
         return spec.from_dict(actions), {
             "log_probs": log_probs_b,
             "entropies": entropies_b,
@@ -83,8 +84,8 @@ class A2CActor(Actor):
 
     def observe(
         self, next_obs: Observation, rewards: Reward, dones: Done
-    ) -> Experience:
-        pass
+    ) -> EnvExperience:
+        return {"reward": rewards, "done": dones}
 
     @property
     def output_spec(self) -> Spec:
@@ -93,29 +94,36 @@ class A2CActor(Actor):
 
 class A2CLearner(Learner):
     @configurable
-    def __init__(self, entropy_weight: float = 0.01, discount: float = 0.99):
+    def __init__(self, value_weight: float = 0.5, entropy_weight: float = 3e-4, discount: float = 0.99):
+        self._value_weight = value_weight
         self._entropy_weight = entropy_weight
         self._discount = discount
 
     def step(
         self, net: AutoNetwork, updater: Updater, xp: Experience, step_count: int
     ) -> tuple[Losses, Metrics]:
-        pass
-        # returns = _base.calc_returns(  # Shape: (R, B)
-        #     bootstrap_values, rewards, dones, self._discount
-        # ).detach()
-        # advantages = returns - values.detach()  # Shape: (R, B)
-        # value_loss = (0.5 * (returns - values) ** 2).mean()
-        # policy_loss = (-log_probs * advantages.unsqueeze(-1).detach()).mean()
-        # entropy_loss = (-entropies * self._entropy_weight).mean()
-        # updater.step(value_loss + policy_loss + entropy_loss)
-        # losses = {
-        #     "value_loss": value_loss.item(),
-        #     "policy_loss": policy_loss.item(),
-        #     "entropy_loss": entropy_loss.item(),
-        # }
-        # metrics = {}
-        # return losses, metrics
+        bootstrap_values = xp["critic"][-1].detach()
+        est_values_rb = xp["critic"][:-1]
+        rewards_rb = xp["reward"][:-1].sum(-1)
+        dones_rb = xp["done"][:-1]
+        log_probs_rb = xp["log_probs"][:-1]
+        entropies_rb = xp["entropies"][:-1]
+        with torch.no_grad():
+            true_values_rb = _base.calc_returns(
+                bootstrap_values, rewards_rb, dones_rb, self._discount
+            ).detach()
+        value_loss = (self._value_weight * (true_values_rb - est_values_rb) ** 2).mean()
+        advantages_rb = true_values_rb - est_values_rb.detach()
+        policy_loss = (-log_probs_rb * advantages_rb.detach()).mean()
+        entropy_loss = (-entropies_rb * self._entropy_weight).mean()
+        updater.step(value_loss + policy_loss + entropy_loss)
+        losses = {
+            "value_loss": value_loss.item(),
+            "policy_loss": policy_loss.item(),
+            "entropy_loss": entropy_loss.item(),
+        }
+        metrics = {}
+        return losses, metrics
 
 
 def _build_distributions(action_spec: Spec) -> dict[str, util.Distribution]:
@@ -126,6 +134,26 @@ def _build_distributions(action_spec: Spec) -> dict[str, util.Distribution]:
         elif type(v) is space.Box:
             ds[k] = util.distribution.Normal(v.shape()[-1])
     return ds
+
+
+def normalize_shape_bf(t: Tensor, batch_size: tuple[int, ...]) -> Tensor:
+    """Normalize shape to (B, F)
+
+    If F dimension is missing, it is added.
+    """
+    if t.dim() < len(batch_size):
+        raise ValueError(
+            f"Expected tensor to have at least {len(batch_size)} dimensions, "
+            f"but got {t.dim()}"
+        )
+    if t.dim() > len(batch_size) + 1:
+        raise ValueError(
+            f"Expected tensor to have at most {len(batch_size) + 1} dimensions, "
+            f"but got {t.dim()}"
+        )
+    if t.dim() == len(batch_size):
+        t = t.unsqueeze(-1)
+    return t
 
 
 if __name__ == "__main__":
