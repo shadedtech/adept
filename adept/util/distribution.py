@@ -28,6 +28,9 @@ class Normal(Distribution):
 
     def forward(self, logits: Tensor) -> TorchDistribution:
         dist = torch.distributions.Normal(loc=logits, scale=self.log_stdev.exp())
+        # Log prob comes out with an extra dimension, so we sum over it
+        old_log_prob = dist.log_prob
+        dist.log_prob = lambda x: old_log_prob(x).sum(-1)
         return dist
 
 

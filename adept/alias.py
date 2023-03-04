@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterable
 
 from torch import Tensor, IntTensor
 
@@ -14,7 +14,7 @@ Spec = Space | dict[str, Space] | tuple[Space, ...]
 Shape = tuple[int, ...]
 HiddenState = Tensor
 HiddenStates = dict[str, HiddenState]
-Experience = dict[str, Tensor | list[Tensor] | dict[str, Tensor]]
+Experience = dict[str, Tensor | Iterable[Tensor] | dict[str, Tensor]]
 Info = dict[str, Any]
 Losses = dict[str, float]
 Metrics = dict[str, int | float]

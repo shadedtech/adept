@@ -3,6 +3,8 @@ from __future__ import annotations
 import abc
 import math
 
+from numbers import Number
+
 import torch
 from torch import Tensor
 
@@ -24,7 +26,7 @@ class Space(abc.ABC):
         self._non_batch_shape: tuple[int, ...] = non_batch_shape
 
     @abc.abstractmethod
-    def sample(self) -> Tensor:
+    def sample(self, with_batch: bool = True) -> Tensor:
         ...
 
     @abc.abstractmethod
@@ -54,24 +56,24 @@ class Box(Space):
     def __init__(
         self,
         shape: int | tuple[int, ...],
-        lows: float | Tensor,
-        highs: float | Tensor,
+        lows: Number | Tensor,
+        highs: Number | Tensor,
         dtype: torch.dtype = torch.float32,
         n_batch_dim: int = 0,
     ):
         if type(shape) is int:
             shape = (shape,)
-        if type(lows) is float:
+        if isinstance(lows, Number):
             lows = torch.empty(shape).fill_(lows)
-        if type(highs) is float:
+        if isinstance(highs, Number):
             highs = torch.empty(shape).fill_(highs)
         super().__init__(shape[:n_batch_dim], shape[n_batch_dim:], dtype)
         self.low = lows
         self.high = highs
 
-    def sample(self) -> Tensor:
+    def sample(self, with_batch: bool = True) -> Tensor:
         return (
-            torch.rand(self._non_batch_shape, dtype=self.dtype, device=self.low.device)
+            torch.rand(self.shape(with_batch), dtype=self.dtype, device=self.low.device)
             * (self.high - self.low)
             + self.low
         )
@@ -97,8 +99,8 @@ class Discrete(Space):
         super().__init__(batch_size, tuple(), dtype)
         self.n_category = n_category
 
-    def sample(self) -> Tensor:
-        return torch.randint(self.n_category, self._non_batch_shape, dtype=self.dtype)
+    def sample(self, with_batch: bool = True) -> Tensor:
+        return torch.randint(self.n_category, self.shape(with_batch), dtype=self.dtype)
 
     def logit_shape(self, with_batch: bool = True) -> tuple[int, ...]:
         return (*self.batch_size, self.n_category) if with_batch else (self.n_category,)
@@ -117,10 +119,10 @@ class MultiDiscrete(Space):
         super().__init__(batch_size, (len(n_categories),), dtype)
         self.n_categories = n_categories
 
-    def sample(self) -> Tensor:
+    def sample(self, with_batch: bool = True) -> Tensor:
         return torch.stack(
             [
-                torch.randint(n_category, self._non_batch_shape, dtype=self.dtype)
+                torch.randint(n_category, self.shape(with_batch), dtype=self.dtype)
                 for n_category in self.n_categories
             ],
             dim=-1,

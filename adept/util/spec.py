@@ -35,6 +35,14 @@ def to_dict(x: T | Iterable[T] | dict[str, T], name: str = None) -> Dict[str, T]
     return dict(items(x, name))
 
 
+def from_dict(x: dict[str, T]) -> T | Iterable[T] | dict[str, T]:
+    if len(x) == 1:
+        return next(iter(x.values()))
+    elif all(k.isnumeric() for k in x.keys()):
+        return [v for _, v in sorted(x.items())]
+    return x
+
+
 def items(
     x: T | Iterable[T] | dict[str, T], name: str = None
 ) -> Iterable[tuple[str, T]]:
@@ -47,6 +55,10 @@ def items(
     if not name:
         raise Exception("Must provide name if x is not a dict or iterable")
     yield name, x
+
+
+def values(x: T | Iterable[T] | dict[str, T]) -> Iterable[T]:
+    return (v for _, v in items(x))
 
 
 if __name__ == "__main__":
