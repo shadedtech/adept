@@ -1,5 +1,8 @@
 import typing
 
+from torch import nn
+
+from adept import util
 from adept.alias import (
     Spec,
     Observation,
@@ -9,25 +12,27 @@ from adept.alias import (
     HiddenStates,
     Action,
     Losses,
-    Metrics, Shape,
-)
+    Metrics, )
 from adept.config import configurable
 from adept.module import Actor, Learner
-from adept.run._base import Updater
-
-from adept.algo import _base
-from adept.util import spec
-from adept.util.spec import to_dict
+from adept.util import spec, space
 
 if typing.TYPE_CHECKING:
     from adept.net import AutoNetwork
-    from adept.module import Preprocessor
+    from adept.run import Updater
 
 
 class A2CActor(Actor):
     @configurable
     def __init__(self, action_spec: Spec):
         super().__init__(action_spec)
+        self.distributions = nn.ModuleDict(_build_distributions(action_spec))
+
+        batch_size = spec.SpecImpl(action_spec, "action").batch_size
+        self._output_spec = {
+            **spec.to_dict(action_spec, "action"),
+            "critic": space.Box(batch_size, -float("inf"), float("inf")),
+        }
 
     def step(
         self,
@@ -41,6 +46,10 @@ class A2CActor(Actor):
         self, next_obs: Observation, rewards: Reward, dones: Done
     ) -> Experience:
         pass
+
+    @property
+    def output_spec(self) -> Spec:
+        return self._output_spec
 
 
 class A2CLearner(Learner):
@@ -68,3 +77,13 @@ class A2CLearner(Learner):
         # }
         # metrics = {}
         # return losses, metrics
+
+
+def _build_distributions(action_spec: Spec) -> dict[str, util.Distribution]:
+    ds = {}
+    for k, v in spec.items(action_spec, "action"):
+        if type(v) is space.Discrete:
+            ds[k] = util.distribution.Categorical(v.n_category)
+        elif type(v) is space.Box:
+            ds[k] = util.distribution.Normal(v.shape()[-1])
+    return ds

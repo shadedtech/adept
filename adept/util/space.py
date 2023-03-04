@@ -53,12 +53,18 @@ class Space(abc.ABC):
 class Box(Space):
     def __init__(
         self,
-        shape: tuple[int, ...],
-        lows: Tensor,
-        highs: Tensor,
+        shape: int | tuple[int, ...],
+        lows: float | Tensor,
+        highs: float | Tensor,
         dtype: torch.dtype = torch.float32,
         n_batch_dim: int = 0,
     ):
+        if type(shape) is int:
+            shape = (shape,)
+        if type(lows) is float:
+            lows = torch.empty(shape).fill_(lows)
+        if type(highs) is float:
+            highs = torch.empty(shape).fill_(highs)
         super().__init__(shape[:n_batch_dim], shape[n_batch_dim:], dtype)
         self.low = lows
         self.high = highs

@@ -13,7 +13,6 @@ from adept.env.atari import AtariEnv, AtariPreprocessor
 from adept.module import Environment, Preprocessor
 
 
-
 class AtariPool(Environment):
     n_reward_component: int = 1
 
@@ -38,8 +37,8 @@ class AtariPool(Environment):
         self._obs_sm = self._observation_spec.zeros().share_memory_()
         self._reward_sm = torch.zeros(
             n_sim, self.n_reward_component
-        ).share_memory_()
-        self._done_sm = torch.zeros(n_sim, dtype=torch.int)
+        ).float().share_memory_()
+        self._done_sm = torch.zeros(n_sim, dtype=torch.int).int()
         self._action_sm = self._action_spec.zeros().share_memory_()
 
         self._procs = []
@@ -139,7 +138,9 @@ def worker(
 if __name__ == '__main__':
     pool = AtariPool()
     obs = pool.reset()
-    for _ in range(100):
-        obs, reward, done, _ = pool.step(pool.action_spec.sample())
-        print(reward)
+    print(pool.action_spec.shape())
+    # TODO why is this working without batch size?
+    # for _ in range(100):
+    #     obs, reward, done, _ = pool.step(pool.action_spec.sample())
+    #     print(reward)
     pool.close()
