@@ -8,7 +8,7 @@ from torch import nn
 from adept.alias import Spec, Observation, Action, HiddenStates, Reward, Done, Experience
 
 if typing.TYPE_CHECKING:
-    from adept.net import AutoNetwork
+    from adept.net import AdeptNetwork
 
 
 class Actor(abc.ABC, nn.Module):
@@ -23,7 +23,7 @@ class Actor(abc.ABC, nn.Module):
         self,
         obs: Observation,
         hiddens: HiddenStates,
-        net: AutoNetwork,
+        net: AdeptNetwork,
     ) -> tuple[Action, Experience, HiddenStates]:
         """Decide actions, data for backprop, and the next hidden states."""
         ...

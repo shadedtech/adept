@@ -20,6 +20,7 @@ class AtariPreprocessor(Preprocessor):
         super().__init__()
         self._observation_spec = observation_spec
         self._batch_size = batch_size
+        self._device = torch.device("cpu")
         # self.transforms = torch.nn.Sequential(
         #     transforms.Grayscale(),
         #     transforms.Resize((84, 84), interpolation=2),
@@ -31,6 +32,7 @@ class AtariPreprocessor(Preprocessor):
         # Move feature dimension to front for pytorch convention
         # obs = obs.permute(0, 3, 1, 2)
         # obs = self.scripted_transforms(obs)
+        obs = obs.to(self._device)
         obs = obs.float() / 255.0
         return obs
 
@@ -41,6 +43,11 @@ class AtariPreprocessor(Preprocessor):
     @property
     def batch_size(self) -> int:
         return self._batch_size
+
+    def to(self, device: torch.device) -> "AtariPreprocessor":
+        self._device = device
+        super().to(device)
+        return self
 
 
 class AtariEnv(Environment):

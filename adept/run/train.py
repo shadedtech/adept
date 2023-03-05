@@ -12,7 +12,7 @@ from adept import util
 from adept.config import CONFIG_MANAGER
 from adept.config import configurable
 from adept.module import Environment, Actor, Learner, ExpBuf, Preprocessor
-from adept.net import AutoNetwork
+from adept.net import AdeptNetwork
 from adept.run import _base
 
 logger = logging.getLogger(__name__)
@@ -21,10 +21,10 @@ logger = logging.getLogger(__name__)
 @configurable
 def main(
     gpu_id: int = 0,
-    env: str = "adept.env.AtariEnv",
+    env: str = "adept.env.AtariPool",
     actor: str = "adept.algo.A2CActor",
     learner: str = "adept.algo.A2CLearner",
-    expbuf: str = "adept.expbuf.Rollout",
+    expbuf: str = "adept.rollout.Rollout",
     optimizer: str = "adept.optim.Adam",
     seed: int = 0,
     logdir: str = "/tmp/adept_logs",
@@ -41,7 +41,7 @@ def main(
     expbuf = util.import_object(expbuf)()
     print(CONFIG_MANAGER.to_yaml())
     preprocessor = env.get_preprocessor().to(device)
-    net = AutoNetwork(
+    net = AdeptNetwork(
         preprocessor.observation_spec,
         actor.output_spec,
     ).to(device)
@@ -76,7 +76,7 @@ def run(
     learner: Learner,
     expbuf: ExpBuf,
     preprocessor: Preprocessor,
-    network: AutoNetwork,
+    network: AdeptNetwork,
     optimizer: Optimizer,
     seed: int = 0,
     logdir: str = "/tmp/adept_logs",

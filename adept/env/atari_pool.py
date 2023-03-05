@@ -9,7 +9,7 @@ from torch import multiprocessing as mp, Tensor
 
 from adept.alias import Spec, Observation, Reward, Done, Info
 from adept.config import configurable
-from adept.env.atari import AtariEnv, AtariPreprocessor
+from adept.env.atari_env import AtariEnv, AtariPreprocessor
 from adept.module import Environment, Preprocessor
 
 
@@ -86,7 +86,7 @@ class AtariPool(Environment):
             p.join()
 
     def get_preprocessor(self) -> Preprocessor:
-        return AtariPreprocessor(self.observation_spec)
+        return AtariPreprocessor(self.observation_spec, batch_size=self.batch_size)
 
     @property
     def observation_spec(self) -> Spec:

@@ -1,5 +1,7 @@
 import torch
 
+from typing import Optional
+
 from adept.alias import HiddenState
 from adept.alias import Shape
 from adept.net.base import NetMod2D

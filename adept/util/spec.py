@@ -32,6 +32,8 @@ class SpecImpl:
 
 
 def to_dict(x: T | Iterable[T] | dict[str, T], name: str = None) -> Dict[str, T]:
+    if isinstance(x, dict):
+        return x
     return dict(items(x, name))
 
 

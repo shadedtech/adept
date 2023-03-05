@@ -14,7 +14,7 @@ from torch import nn, Tensor
 from adept.alias import Observation, Spec, Shape, HiddenStates
 from adept.config import configurable
 from adept.module import NetMod
-from adept.util import import_util, torch_util, spec
+from adept.util import import_util, torch_util, spec, shape_util
 from adept.util.space import Space, Discrete, Box
 from adept.net.net1d import OutputLayer1D
 from adept.net.net2d import OutputLayer2D
@@ -34,19 +34,19 @@ ModuleID = str
 
 
 DEFAULT_AUTO_SPEC = {
-  "source1d": "adept.net.net1d.LinearNet",
-  "source2d": "adept.net.net2d.SeqConvNet",
-  "source3d": "adept.net.net3d.ImageConvNet",
-  "source4d": "adept.net.net4d.Identity4D",
-  "body": "adept.net.net1d.LSTM",
-  "head1d": "adept.net.net1d.Identity1D",
-  "head2d": "adept.net.net2d.Identity2D",
-  "head3d": "adept.net.net3d.Identity3D",
-  "head4d": "adept.net.net4d.Identity4D"
+    "source1d": "adept.net.net1d.LinearNet",
+    "source2d": "adept.net.net2d.SeqConvNet",
+    "source3d": "adept.net.net3d.ImageConvNet",
+    "source4d": "adept.net.net4d.Identity4D",
+    "body": "adept.net.net1d.LinearNet",
+    "head1d": "adept.net.net1d.Identity1D",
+    "head2d": "adept.net.net2d.Identity2D",
+    "head3d": "adept.net.net3d.Identity3D",
+    "head4d": "adept.net.net4d.Identity4D",
 }
 
 
-class AutoNetwork(nn.Module):
+class AdeptNetwork(nn.Module):
     @configurable
     def __init__(
         self,
@@ -64,12 +64,18 @@ class AutoNetwork(nn.Module):
         self._auto_spec = auto_spec
         self._nodes = nodes
         self._edges = edges
+        # Nodes and edges define the computation graph of the network
+        # Auto spec loads the graph from a table of predefined nodes and edges
+        # if the nodes and eges are not specified
         if not self._nodes or not self._edges:
             self._nodes, self._edges = self._from_auto(self._auto_spec)
         graph = nx.DiGraph(self._edges)
         if not nx.is_directed_acyclic_graph(graph):
             raise Exception("Network graph must be a DAG")
+        # Topologoical sort of the graph defines the order of computation
         self._node_order = list(nx.topological_sort(graph))
+        # Predecessors and successors of each node are calculated in init and
+        # stored for fast access
         self._predecessors = {
             node_name: list(graph.predecessors(node_name))
             for node_name in self._node_order
@@ -88,13 +94,16 @@ class AutoNetwork(nn.Module):
         for node_name, layer in self._get_output_layers().items():
             self.add_module(node_name, layer)
         logger.info(
-            "Network initialized with %.2fM parameters" % (torch_util.get_num_params(self) / 1e6)
+            "Network initialized with %.2fM parameters"
+            % (torch_util.get_num_params(self) / 1e6)
         )
 
     def forward(
         self, obs: Observation, hidden_states: HiddenStates, **kwargs
     ) -> Tuple[dict[NodeID, Tensor], HiddenStates]:
         obs = spec.to_dict(obs, name="obs")
+        # Cache stores computation results for each node
+        # When the cached values are no longer needed, they are deleted
         cache = {}
         counts = copy(self._successor_counts)
         nxt_hid = {}
@@ -115,9 +124,7 @@ class AutoNetwork(nn.Module):
                         raise Exception("Unreachable")
                 x = torch.cat(inputs, dim=1)
                 hstate = None if cur not in hidden_states else hidden_states[cur]
-                cache[cur], nxt_hid[cur] = self._modules[cur].forward(
-                    x, hstate
-                )
+                cache[cur], nxt_hid[cur] = self._modules[cur].forward(x, hstate)
                 for p in marked_for_delete:
                     del cache[p]
         nxt_hid = {k: v for k, v in nxt_hid.items() if v is not None}
@@ -142,25 +149,33 @@ class AutoNetwork(nn.Module):
     def _from_auto(
         self, auto_spec: dict[NodeID, ModuleID]
     ) -> Tuple[dict[NodeID, ModuleID], dict[NodeID, List[NodeID]]]:
-        input_dims = [len(space._non_batch_shape) for space in self._observation_spec.values()]
-        output_dims = [len(space._non_batch_shape) for space in self._output_spec.values()]
+        """Constructs DAG of a preset structure from a table of predefined nodes"""
+        input_dims = [
+            len(space.shape(with_batch=False))
+            for space in self._observation_spec.values()
+        ]
+        output_dims = [
+            len(space.logit_shape(with_batch=False))
+            for space in self._output_spec.values()
+        ]
         if len(input_dims) != len(set(input_dims)):
             raise Exception("Not implemented")  # TODO
         nodes = {}  # node_name to module mapping
         edges = defaultdict(list)  # graph data structure
-        for input_node, shape in self._observation_spec.items():
+        for input_node, space in self._observation_spec.items():
+            shape = space.shape(with_batch=False)
             dim = len(shape)
             source_node = f"source{dim}d"
             edges[input_node].append(source_node)
             nodes[source_node] = auto_spec[source_node]
             edges[source_node].append("body")
         nodes["body"] = auto_spec["body"]
-        # TODO kill from here down
-        for dim in output_dims:
+        for dim in set(output_dims):
             head_node = f"head{dim}d"
             nodes[head_node] = auto_spec[head_node]
             edges["body"].append(head_node)
-        for output_node, shape in self._output_spec.items():
+        for output_node, space in self._output_spec.items():
+            shape = space.logit_shape(with_batch=False)
             dim = len(shape)
             head_node = f"head{dim}d"
             edges[head_node].append(output_node)
@@ -175,11 +190,11 @@ class AutoNetwork(nn.Module):
                 for p in self._predecessors[node_name]:
                     if p in self._observation_spec:
                         # TODO method to cast dimension
-                        shapes.append(self._observation_spec[p])
+                        shapes.append(self._observation_spec[p].shape(with_batch=False))
                     elif p in netmods:
-                        shapes.append(netmods[p].logit_shape(nm_cls.dim()))
+                        shapes.append(netmods[p].output_shape(nm_cls.dim()))
                     elif p in self._output_spec:
-                        shapes.append(self._output_spec[p])
+                        shapes.append(self._output_spec[p].logit_shape(with_batch=False))
                 # non-feature dims must match
                 in_shape = _merge_shapes(shapes)
                 if nm_cls.is_configurable:
@@ -190,17 +205,18 @@ class AutoNetwork(nn.Module):
 
     def _get_output_layers(self) -> Dict[str, nn.Module]:
         layers = {}
-        for node_name, out_shape in self._output_spec.items():
+        for node_name, out_spec in self._output_spec.items():
+            out_shape = out_spec.logit_shape(with_batch=False)
             for p in self._predecessors[node_name]:
                 shapes = []
                 if p in self._observation_spec:
                     # TODO method to cast dimension
-                    shapes.append(self._observation_spec[p])
+                    shapes.append(self._observation_spec[p].shape(with_batch=False))
                 elif p in self._modules:
                     shapes.append(self._modules[p].output_shape(len(out_shape)))
                 elif p in self._output_spec:
                     # TODO method to cast dimension
-                    shapes.append(self._output_spec[p])
+                    shapes.append(self._output_spec[p].logit_shape(with_batch=False))
                 in_shape = _merge_shapes(shapes)
                 layers[node_name] = _get_output_layer(node_name, in_shape, out_shape)
         return layers
@@ -256,10 +272,7 @@ if __name__ == "__main__":
     output_shapes = {
         "action": (1,),
     }
-    net = AutoNetwork(
-        observation_shapes,
-        output_shapes
-    )
+    net = AdeptNetwork(observation_shapes, output_shapes)
     print(net._nodes)
     print(net._edges)
     print(net._modules)

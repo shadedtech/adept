@@ -1,1 +1,1 @@
-from .autonet import AutoNetwork
+from .adeptnet import AdeptNetwork

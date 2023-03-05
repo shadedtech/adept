@@ -79,14 +79,16 @@ class Box(Space):
         )
 
     def logit_shape(self, with_batch: bool = True) -> tuple[int, ...]:
+        # If non batch shape is empty, unsqueeze to make it 1D
+        non_batch_shape = self._non_batch_shape or (1,)
         return (
-            (*self.batch_size, *self._non_batch_shape)
+            (*self.batch_size, *non_batch_shape)
             if with_batch
             else self._non_batch_shape
         )
 
     def __repr__(self):
-        return f"Box({self.shape()})"
+        return f"Box({self.shape()}, batch_size={self.batch_size})"
 
 
 class Discrete(Space):

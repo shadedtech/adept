@@ -9,7 +9,7 @@ from torch import nn
 from torch.optim import Optimizer
 
 if typing.TYPE_CHECKING:
-    from adept.net import AutoNetwork
+    from adept.net import AdeptNetwork
     from adept.module import Actor, Preprocessor
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ class CheckpointWriter:
     def __init__(self, rundir: str):
         self._run_dir = rundir
 
-    def save_network(self, network: AutoNetwork, step_count: int) -> None:
+    def save_network(self, network: AdeptNetwork, step_count: int) -> None:
         save_dir = os.path.join(self._run_dir, str(step_count))
         save_module(network, save_dir, f"net_{step_count}.pth")
         logger.info("Network saved on step", step_count)

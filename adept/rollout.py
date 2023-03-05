@@ -8,9 +8,7 @@ from torch.multiprocessing import Queue
 
 from adept.alias import Experience
 from adept.config import configurable
-
-if typing.TYPE_CHECKING:
-    from adept.module import ExpBuf
+from adept.module import ExpBuf
 
 
 class Rollout(ExpBuf):
