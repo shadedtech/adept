@@ -110,15 +110,17 @@ class A2CLearner(Learner):
     def step(
         self, net: AdeptNetwork, updater: Updater, xp: Experience, step_count: int
     ) -> tuple[Losses, Metrics]:
-        bootstrap_values = xp["critic"][-1].clone().detach()
-        est_values_rb = xp["critic"][:-1]
-        rewards_rb = xp["reward"][:-1].sum(-1)
-        dones_rb = xp["done"][:-1]
-        log_probs_rb = xp["log_probs"][:-1]
-        entropies_rb = xp["entropies"][:-1]
+        with torch.no_grad():
+            pred, _ = net.forward(xp["next_obs"], xp["next_hiddens"])
+            bootstrap_values_b = pred["critic"].squeeze(-1)
+        est_values_rb = xp["critic"]
+        rewards_rb = xp["reward"].sum(-1)
+        dones_rb = xp["done"]
+        log_probs_rb = xp["log_probs"]
+        entropies_rb = xp["entropies"]
         with torch.no_grad():
             true_values_rb = _base.calc_returns(
-                bootstrap_values, rewards_rb, dones_rb, self._discount
+                bootstrap_values_b, rewards_rb, dones_rb, self._discount
             ).detach()
         value_loss = (self._value_weight * (true_values_rb - est_values_rb) ** 2).mean()
         advantages_rb = true_values_rb - est_values_rb.detach()

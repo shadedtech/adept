@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gymnasium as gym
 import torch
 from torch import Tensor
@@ -44,7 +46,7 @@ class AtariPreprocessor(Preprocessor):
     def batch_size(self) -> int:
         return self._batch_size
 
-    def to(self, device: torch.device) -> "AtariPreprocessor":
+    def to(self, device: torch.device) -> AtariPreprocessor:
         self._device = device
         super().to(device)
         return self
@@ -99,11 +101,11 @@ class AtariEnv(Environment):
         done = terminated or truncated
         # Add batch dimension
         obs = torch.from_numpy(gym_obs)
-        reward = torch.tensor(reward).view(1)
-        done = torch.tensor(done).int()
-        if done.item():
+        reward = torch.tensor(reward).view(1,)
+        done_t = torch.tensor(done).int()
+        if done:
             obs = self.reset()
-        return obs, reward, done, info
+        return obs, reward, done_t, info
 
     def reset(self) -> Observation:
         gym_obs, _ = self._env.reset()

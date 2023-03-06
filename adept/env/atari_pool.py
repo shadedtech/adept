@@ -32,7 +32,7 @@ class AtariPool(Environment):
 
         self.batch_size = n_sim
         self.n_sim = n_sim
-
+        self._env_id = env_id
         self._start_seed = start_seed
         self._obs_sm = self._observation_spec.zeros().share_memory_()
         self._reward_sm = torch.zeros(
@@ -95,6 +95,9 @@ class AtariPool(Environment):
     @property
     def action_spec(self) -> Spec:
         return self._action_spec
+
+    def __repr__(self):
+        return f"AtariPool(env_id={self._env_id}, n_sim={self.n_sim})"
 
 
 def worker(

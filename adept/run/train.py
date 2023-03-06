@@ -109,22 +109,22 @@ def run(
         nxt_obs, rewards, dones, infos = env.step(actions)
         nxt_obs = preprocessor(nxt_obs)
         env_xp = actor.observe(nxt_obs, rewards.to(device), dones.to(device))
-        ready = expbuf.step(actor_xp, env_xp)
+        ready = expbuf.step(actor_xp, env_xp, nxt_obs, hidden_states)
         step_count += preprocessor.batch_size
         ep_rewards += rewards.sum(dim=-1)
         obs = nxt_obs
         for batch_ix, done in enumerate(dones):
             if done:
                 tb_writer.add_scalar("reward", ep_rewards[batch_ix], step_count)
-                ep_rewards[batch_ix].zero_()
                 hidden_states = _base.reset_hidden_states(
                     batch_ix, hidden_states, network.new_hidden_states(device)
                 )
-                logger.info(
+                print(
                     f"STEP: {step_count} "
                     f"REWARD: {ep_rewards[batch_ix]} "
                     f"SPS: {_base.get_steps_per_second(delta_times, preprocessor.batch_size)}"
                 )
+                ep_rewards[batch_ix].zero_()
         if ready:
             losses, metrics = learner.step(
                 network, updater, expbuf.to_dict(), step_count

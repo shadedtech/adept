@@ -22,7 +22,7 @@ class CheckpointWriter:
     def save_network(self, network: AdeptNetwork, step_count: int) -> None:
         save_dir = os.path.join(self._run_dir, str(step_count))
         save_module(network, save_dir, f"net_{step_count}.pth")
-        logger.info("Network saved on step", step_count)
+        logger.info(f"Network saved on step {step_count}")
 
     def save_actor(self, network: Actor, step_count: int) -> None:
         save_dir = os.path.join(self._run_dir, str(step_count))

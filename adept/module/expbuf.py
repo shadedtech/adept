@@ -4,12 +4,18 @@ import abc
 
 from torch.multiprocessing import Queue
 
-from adept.alias import Experience
+from adept.alias import Experience, Observation, HiddenStates
 
 
 class ExpBuf(abc.ABC):
     @abc.abstractmethod
-    def step(self, actor_entry: Experience, env_entry: Experience) -> bool:
+    def step(
+        self,
+        actor_entry: Experience,
+        env_entry: Experience,
+        next_obs: Observation,
+        next_hiddens: HiddenStates,
+    ) -> bool:
         ...
 
     @abc.abstractmethod

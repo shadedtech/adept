@@ -50,17 +50,20 @@ CONFIG_MANAGER = _ConfigManager()
 
 
 def configurable(f: Type[_T]) -> Type[_T]:
+    f.tag = f.__name__
     if inspect.isclass(f):
-        f.is_configurable = True
-        f = f.__init__
+        raise NotImplementedError("Configurable class not implemented, decorate the __init__ method instead")
+
     @wraps(f)
     def wrapper(*args, **kwargs):
+        if f.__name__ == "__init__":
+            f.tag = args[0].__class__.__name__
         params = inspect.signature(f).parameters
-        tag = f.__name__
+        # params = {k: v for k, v in params.items() if k != "self"}
         if "tag" in kwargs:
-            tag = kwargs["tag"]
+            f.tag = kwargs["tag"]
             del kwargs["tag"]
-        conf = {k: v for k, v in CONFIG_MANAGER.provided().get(tag, {}).items()}
+        conf = {k: v for k, v in CONFIG_MANAGER.provided().get(f.tag, {}).items()}
         for i, (name, param) in enumerate(params.items()):
             if param.default is not param.empty:
                 if i < len(args):
@@ -71,16 +74,17 @@ def configurable(f: Type[_T]) -> Type[_T]:
                     kwargs[name] = conf[name]
                 else:
                     conf[name] = param.default
-        CONFIG_MANAGER._add_config({tag: conf})
+        CONFIG_MANAGER._add_config({f.tag: conf})
         return f(*args, **kwargs)
+
     wrapper.is_configurable = True
     return wrapper
 
 
 if __name__ == "__main__":
 
-    @configurable
     class Network:
+        @configurable
         def __init__(self, n_layer: int = 3, n_hidden: int = 5):
             print("n_layer", n_layer)
             print("n_hidden", n_hidden)
