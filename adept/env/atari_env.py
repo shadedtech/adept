@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import gymnasium as gym
 import torch
 from torch import Tensor
@@ -15,6 +17,8 @@ from adept.env.base.gym_wrappers import (
 )
 from adept.module import Environment, Preprocessor
 from adept.util import space
+
+logger = logging.getLogger(__name__)
 
 
 class AtariPreprocessor(Preprocessor):
@@ -132,6 +136,8 @@ class AtariEnv(Environment):
 
 
 if __name__ == "__main__":
+    from adept.util.log_util import setup_logging
+    setup_logging(logger)
     env = AtariEnv(0)
     preprocess = env.get_preprocessor()
     print(env.observation_spec.sample())

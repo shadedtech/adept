@@ -12,10 +12,10 @@ from adept import util
 from adept.config import CONFIG_MANAGER
 from adept.config import configurable
 from adept.module import Environment, Actor, Learner, ExpBuf, Preprocessor
-from adept.net import AdeptNetwork
+from adept.net import Network
 from adept.run import _base
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("adept.run.train")
 
 
 @configurable
@@ -28,7 +28,7 @@ def main(
     optimizer: str = "adept.optim.Adam",
     seed: int = 0,
     logdir: str = "/tmp/adept_logs",
-    experiment_tag: str = None,
+    run_name: str = None,
     resume_path: str = None,
     n_step: int = 10_000_000,
     checkpoint_interval: int = 1_000_000,
@@ -41,7 +41,7 @@ def main(
     expbuf = util.import_object(expbuf)()
     print(CONFIG_MANAGER.to_yaml())
     preprocessor = env.get_preprocessor().to(device)
-    net = AdeptNetwork(
+    net = Network(
         preprocessor.observation_spec,
         actor.output_spec,
     ).to(device)
@@ -60,7 +60,7 @@ def main(
             optimizer,
             seed,
             logdir,
-            experiment_tag,
+            run_name,
             resume_path,
             n_step,
             checkpoint_interval,
@@ -76,18 +76,18 @@ def run(
     learner: Learner,
     expbuf: ExpBuf,
     preprocessor: Preprocessor,
-    network: AdeptNetwork,
+    network: Network,
     optimizer: Optimizer,
     seed: int = 0,
     logdir: str = "/tmp/adept_logs",
-    experiment_tag: str = None,
+    run_name: str = None,
     resume_path: str = None,
     n_step: int = 10_000_000,
     checkpoint_interval: int = 1_000_000,
 ):
     torch.manual_seed(seed)
     np.random.seed(seed)
-    rundir_path = _base.get_rundir(__file__, logdir, experiment_tag, resume_path)
+    rundir_path = _base.get_rundir(__file__, logdir, run_name, resume_path)
     os.makedirs(rundir_path, exist_ok=True)
     logger.info(f"Logging to {rundir_path}")
     updater = _base.BasicUpdater(network, optimizer)
@@ -148,4 +148,7 @@ if __name__ == "__main__":
     from adept.util import log_util
 
     log_util.setup_logging()
-    main()
+    # This is to suppress gym environment stream handler on the root logger
+    # https://github.com/Farama-Foundation/Gymnasium/issues/363
+    with log_util.DisableStderr():
+        main()

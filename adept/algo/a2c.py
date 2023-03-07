@@ -24,7 +24,7 @@ from adept.util import spec, space
 from adept.util.shape_util import norm_tensor_bf
 
 if typing.TYPE_CHECKING:
-    from adept.net import AdeptNetwork
+    from adept.net import Network
     from adept.run import Updater
 
 
@@ -61,7 +61,7 @@ class A2CActor(Actor):
         self,
         obs: Observation,
         hiddens: HiddenStates,
-        net: AdeptNetwork,
+        net: Network,
     ) -> tuple[Action, ActorExperience, HiddenStates]:
         out, nxt_hiddens = net.forward(obs, hiddens)
         actions, exp = self._get_experience(out)
@@ -108,7 +108,7 @@ class A2CLearner(Learner):
         self._discount = discount
 
     def step(
-        self, net: AdeptNetwork, updater: Updater, xp: Experience, step_count: int
+        self, net: Network, updater: Updater, xp: Experience, step_count: int
     ) -> tuple[Losses, Metrics]:
         with torch.no_grad():
             pred, _ = net.forward(xp["next_obs"], xp["next_hiddens"])

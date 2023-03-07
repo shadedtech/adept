@@ -38,7 +38,7 @@ DEFAULT_AUTO_SPEC = {
     "source2d": "adept.net.net2d.SeqConvNet",
     "source3d": "adept.net.net3d.ImageConvNet",
     "source4d": "adept.net.net4d.Identity4D",
-    "body": "adept.net.net1d.LinearNet",
+    "body": "adept.net.net1d.LSTM",
     "head1d": "adept.net.net1d.Identity1D",
     "head2d": "adept.net.net2d.Identity2D",
     "head3d": "adept.net.net3d.Identity3D",
@@ -46,7 +46,7 @@ DEFAULT_AUTO_SPEC = {
 }
 
 
-class AdeptNetwork(nn.Module):
+class Network(nn.Module):
     @configurable
     def __init__(
         self,
@@ -272,7 +272,7 @@ if __name__ == "__main__":
     output_shapes = {
         "action": (1,),
     }
-    net = AdeptNetwork(observation_shapes, output_shapes)
+    net = Network(observation_shapes, output_shapes)
     print(net._nodes)
     print(net._edges)
     print(net._modules)

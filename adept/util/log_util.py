@@ -1,8 +1,10 @@
 import datetime
 import logging
+import os
+import sys
 from os import listdir
 from os import path
-from typing import List, Dict, Iterator
+from typing import List, Iterator
 from typing import Optional
 
 import torch
@@ -141,16 +143,32 @@ def write_summaries(
             )
 
 
-
-def setup_logging(logger: logging.Logger = None):
-    import logging
-    import sys
-
+def setup_logging(logger: logging.Logger = None, log_level: int = logging.DEBUG):
     formatter = logging.Formatter(fmt="%(levelname)s %(name)s: %(message)s")
 
-    stdout_handler = logging.StreamHandler(stream=sys.stdout)
-    stdout_handler.setFormatter(formatter)
+    handler = logging.StreamHandler(stream=sys.stdout)
+    handler.setFormatter(formatter)
 
     logger = logging.getLogger("adept") if logger is None else logger
-    logger.addHandler(stdout_handler)
-    logger.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
+    logger.setLevel(log_level)
+
+
+class DisableStdout:
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout
+
+
+class DisableStderr:
+    def __enter__(self):
+        self._original_stderr = sys.stderr
+        sys.stderr = open(os.devnull, 'w')
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stderr.close()
+        sys.stderr = self._original_stderr

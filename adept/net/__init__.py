@@ -1,1 +1,1 @@
-from .adeptnet import AdeptNetwork
+from .network import Network
