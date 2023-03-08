@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import typing
 
 import torch
@@ -49,7 +50,7 @@ class A2CActor(Actor):
         self._output_spec = {
             **spec.to_dict(action_spec, "action"),
             "critic": space.Box(
-                (*self.batch_size, 1), -float("inf"), float("inf"), n_batch_dim=1
+                (math.prod(self.batch_size), 1), -float("inf"), float("inf"), n_batch_dim=1
             ),
         }
         if is_training:
@@ -74,9 +75,9 @@ class A2CActor(Actor):
         for action_key, dist_mod in self.action_distributions.items():
             dist = dist_mod.forward(out[action_key])
             action = dist.sample()
-            log_probs.append(norm_tensor_bf(dist.log_prob(action), self.batch_size))
-            entropies.append(norm_tensor_bf(dist.entropy(), self.batch_size))
-            actions[action_key] = action.cpu()
+            log_probs.append(norm_tensor_bf(dist.log_prob(action), (math.prod(self.batch_size),)))
+            entropies.append(norm_tensor_bf(dist.entropy(), (math.prod(self.batch_size),)))
+            actions[action_key] = action.view(self.batch_size).cpu()
         log_probs_b = torch.cat(log_probs, dim=-1).sum(-1)
         entropies_b = torch.cat(entropies, dim=-1).sum(-1)
         return spec.from_dict(actions), {

@@ -43,17 +43,17 @@ class GPT2(NetMod2D):
         self,
         name: str,
         input_shape: Tuple[int, ...],
-        n_head: int = 12,
+        n_head: int = 8,
         n_layer: int = 12,
-        seq_len: int = 128,
-        n_feature: int = 512,
+        seq_len: int = 32,
+        n_feature: int = 128,
         bias: bool = True,
         p_dropout: float = 0.2,
         is_causal: bool = False,
         pad_value: float = 0.0
     ):
         super().__init__(name, input_shape)
-        self.in_proj = nn.Linear(input_shape[-1], n_feature, bias=False)
+        self.in_proj = nn.Linear(seq_len, n_feature, bias=False)
         self.position_encoder = nn.Embedding(seq_len, n_feature)
         self.blocks = nn.ModuleList(
             [
@@ -92,10 +92,10 @@ class GPT2(NetMod2D):
             tmp = torch.empty(b, self._seq_len, f, device=x_bsf.device).fill_(self._pad_value)
             tmp[:, :s, :] = x_bsf
             x_bsf = tmp
-        x_bsf = self.in_proj(x_bsf)
-        x_bsf = x_bsf + self.position_encoder(
-            torch.arange(x_bsf._non_batch_shape[1], device=x_bsf.device)
-        )
+        # x_bsf = self.in_proj(x_bsf)
+        # x_bsf = x_bsf + self.position_encoder(
+        #     torch.arange(x_bsf._non_batch_shape[1], device=x_bsf.device)
+        # )
         for block in self.blocks:
             x_bsf = block(x_bsf)
         return x_bsf.permute(0, 2, 1), None
@@ -120,7 +120,7 @@ class Block(nn.Module):
             n_head, seq_len, n_feature, bias, p_dropout, is_causal
         )
         self.ln_2 = LayerNorm(n_feature, bias=bias)
-        self.mlp = MLP(n_feature, 4 * n_feature, bias=bias, p_dropout=p_dropout)
+        self.mlp = MLP(n_feature, n_feature, bias=bias, p_dropout=p_dropout)
 
     def forward(self, x_bsf: Tensor) -> Tensor:
         x_bsf = x_bsf + self.attn(self.ln_1(x_bsf))
@@ -131,8 +131,8 @@ class Block(nn.Module):
 class MLP(nn.Module):
     def __init__(self, n_in: int, n_out: int, bias: bool, p_dropout: float):
         super().__init__()
-        self.c_fc = nn.Linear(n_in, n_out, bias=bias)
-        self.c_proj = nn.Linear(n_out, n_out, bias=bias)
+        self.c_fc = nn.Linear(n_in, n_out * 4, bias=bias)
+        self.c_proj = nn.Linear(n_out * 4, n_out, bias=bias)
         self.dropout = nn.Dropout(p_dropout)
 
     def forward(self, x: Tensor) -> Tensor:
