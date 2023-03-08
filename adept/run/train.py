@@ -5,15 +5,15 @@ from collections import deque
 
 import numpy as np
 import torch
-from torch.optim import Optimizer
-from torch.utils.tensorboard import SummaryWriter
-
 from adept import util
 from adept.config import CONFIG_MANAGER
 from adept.config import configurable
 from adept.module import Environment, Actor, Learner, ExpBuf, Preprocessor
 from adept.net import Network
 from adept.run import _base
+from omegaconf import OmegaConf
+from torch.optim import Optimizer
+from torch.utils.tensorboard import SummaryWriter
 
 logger = logging.getLogger("adept.run.train")
 
@@ -39,7 +39,6 @@ def main(
     actor = util.import_object(actor)(env.action_spec).to(device)
     learner = util.import_object(learner)()
     expbuf = util.import_object(expbuf)()
-    print(CONFIG_MANAGER.to_yaml())
     preprocessor = env.get_preprocessor().to(device)
     net = Network(
         preprocessor.observation_spec,
@@ -89,6 +88,8 @@ def run(
     np.random.seed(seed)
     rundir_path = _base.get_rundir(__file__, logdir, run_name, resume_path)
     os.makedirs(rundir_path, exist_ok=True)
+    print(CONFIG_MANAGER.to_yaml())
+    OmegaConf.save(CONFIG_MANAGER.cfg(), os.path.join(rundir_path, "cfg.yaml"))
     logger.info(f"Logging to {rundir_path}")
     updater = _base.BasicUpdater(network, optimizer)
     writer = util.CheckpointWriter(rundir_path)
@@ -148,7 +149,4 @@ if __name__ == "__main__":
     from adept.util import log_util
 
     log_util.setup_logging()
-    # This is to suppress gym environment stream handler on the root logger
-    # https://github.com/Farama-Foundation/Gymnasium/issues/363
-    with log_util.DisableStderr():
-        main()
+    main()

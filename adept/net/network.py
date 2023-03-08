@@ -35,7 +35,7 @@ ModuleID = str
 
 DEFAULT_AUTO_SPEC = {
     "source1d": "adept.net.net1d.LinearNet",
-    "source2d": "adept.net.net2d.SeqConvNet",
+    "source2d": "adept.net.net2d.GPT2",
     "source3d": "adept.net.net3d.ImageConvNet",
     "source4d": "adept.net.net4d.Identity4D",
     "body": "adept.net.net1d.LSTM",
@@ -116,7 +116,7 @@ class Network(nn.Module):
                         inputs.append(obs[p])
                     elif p in cache:
                         shape = self._modules[p].output_shape(self._modules[cur].dim())
-                        inputs.append(cache[p].view(-1, *shape))
+                        inputs.append(cache[p].reshape(-1, *shape))
                         counts[p] -= 1
                         if counts[p] == 0:
                             marked_for_delete.append(p)

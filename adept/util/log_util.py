@@ -146,7 +146,7 @@ def write_summaries(
 def setup_logging(logger: logging.Logger = None, log_level: int = logging.DEBUG):
     formatter = logging.Formatter(fmt="%(levelname)s %(name)s: %(message)s")
 
-    handler = logging.StreamHandler(stream=sys.stdout)
+    handler = logging.StreamHandler()
     handler.setFormatter(formatter)
 
     logger = logging.getLogger("adept") if logger is None else logger
